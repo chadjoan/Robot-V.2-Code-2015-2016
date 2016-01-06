@@ -12,15 +12,23 @@ import org.swerverobotics.library.interfaces.*;
 public class TeleOpV1 extends SynchronousOpMode
 {
     // Variables
+
+
     // defaults to blue alliance
     private boolean isBlue = true;
+
     //tells whether triggers are in resting position or are down/active, starts at rest
     private boolean atRestTriggers = true;
+
     // methods with these variables need values
     private final double ARBITRARYDOUBLE = 0;
-    private final float ARBITRARYFLOAT = 0;
-    private final boolean ARBITRARYBOOLEAN = false;
-    public static final double TICKS_PER_INCH = 133.7;
+    private final int ARBITRARYINT = 0;
+
+    //Starting Position of the Tape Measure
+    private int motorTapeStartPos;
+
+    //Motors
+
 
     // Declare drive motors
     DcMotor motorLeftFore;
@@ -86,13 +94,15 @@ public class TeleOpV1 extends SynchronousOpMode
                     telemetry.update();
                 }
 
-                if (gamepad1.left_stick_y) {
+                //Read Joystick Data and Update Speed of Left and Right Motors
+                ///////////////////////////////////////////////////////
+                setLeftDrivePower(scaleInput(gamepad1.left_stick_y));//
+                setRightDrivePower(gamepad1.right_stick_y);          //
+                ///////////////////////////////////////////////////////
 
-                }
 
-                }
+
             }
-
             telemetry.update();
             idle();
         }
@@ -131,6 +141,9 @@ public class TeleOpV1 extends SynchronousOpMode
         servoLeftZip = hardwareMap.servo.get("servoLeftZip");
         servoRightZip = hardwareMap.servo.get("servoRightZip");
 
+        // Initialize tape tracking variable
+        motorTapeStartPos = motorTape.getCurrentPosition();
+
         // Initialize sensors
         gyro = hardwareMap.gyroSensor.get("gyro");
 
@@ -150,7 +163,7 @@ public class TeleOpV1 extends SynchronousOpMode
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                            //
-    //                                     support methods                                        //
+    //                                     main methods                                           //
     //                                                                                            //
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -158,7 +171,7 @@ public class TeleOpV1 extends SynchronousOpMode
         if (isBlue){
             if (atRestTriggers)
                 servoRightZip.setPosition(ARBITRARYDOUBLE);
-                servoRightZip.setPosition(ARBITRARYDOUBLE);
+            servoRightZip.setPosition(ARBITRARYDOUBLE);
         }
         else{
             if (atRestTriggers)
@@ -169,7 +182,13 @@ public class TeleOpV1 extends SynchronousOpMode
         atRestTriggers = !atRestTriggers;
     }
 
-    public void setLeftDrivePower(double power){
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    //                                                                                            //
+    //                                     support methods                                        //
+    //                                                                                            //
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    public void setLeftDrivePower(double power) {
         motorLeftFore.setPower(power);
         motorLeftAft.setPower(power);
     }
@@ -178,13 +197,16 @@ public class TeleOpV1 extends SynchronousOpMode
         motorRightFore.setPower(power);
         motorRightAft.setPower(power);
     }
-//FINISH
-    public void extendTapeAuto() {
-        if (motorTape.isBusy()){
-            motorTape.setTargetPosition(0);
+
+    public void extendTapeAuto() throws InterruptedException {
+        boolean notCalledAgain = true;
+        if (motorTape.isBusy())
+            motorTape.setPower(0);
+        else {
+            moveMotorTicks(ARBITRARYINT, motorTape, ARBITRARYDOUBLE); //First arbitrary int is how many ticks we want the motor to extend, second arbitrary double is where we want the tape to start slowing down.
+            while (motorTape.isBusy())
+            this.idle();
         }
-        else
-            motorTape.setPower(1);
     }
 
     public void moveSlide(int distance) throws InterruptedException{
@@ -202,11 +224,12 @@ public class TeleOpV1 extends SynchronousOpMode
 
     }
 
-    private void moveMotorTicks(int ticks, int power, DcMotor motor) throws InterruptedException{
+    //thresh: distance from target at which motor slows
+    private void moveMotorTicks(int ticks, DcMotor motor, double thresh) throws InterruptedException{
 
         motor.setTargetPosition(motor.getCurrentPosition() + ticks);
 
-        motor.setPower(((double) power) / 100);    // USE POWER CURVE ONCE CODED
+        setCurvedPower(motor, thresh, 100, 60); //THESE ARE ARBITRARY NUMBERS THAT WE WILL REFINE THROUGH TESTING.
 
         motor.setMode(DcMotorController.RunMode.RUN_TO_POSITION);
 
@@ -216,8 +239,40 @@ public class TeleOpV1 extends SynchronousOpMode
         motor.setPower(0);
     }
 
-    public double powerCurve(double imputPower, boolean positive) {
-        return ARBITRARYDOUBLE; //NEED TO COME UP WITH FORMULA FOR POWER CURVE
+    //thresh: distance from target at which motor slows
+    public void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) {
+        int target = motor.getTargetPosition();
+        if(target - motor.getCurrentPosition() > thresh)
+            motor.setPower(inputPower);
+        else {
+            double overThr = motor.getCurrentPosition() - target + thresh;
+            double power = inputPower-overThr*overThr/thresh/thresh*(inputPower - minPower);
+            motor.setPower(power);
+        }
+    }
+
+    //Default Scale Input Method created by FTC- We will use this one until someone creates a better one.
+    //Used for scaling joysticks, basically is a floor function that is squared
+    double scaleInput(double dVal)  {
+        double[] scaleArray = { 0.0, 0.05, 0.09, 0.10, 0.12, 0.15, 0.18, 0.24,
+                0.30, 0.36, 0.43, 0.50, 0.60, 0.72, 0.85, 1.00, 1.00 };
+
+        // get the corresponding index for the scaleInput array.
+        int index = (int) (dVal * 16.0);
+        if (index < 0)
+            index = -index;
+        if (index > 16)
+            index = 16;
+
+
+        double dScale = 0.0;
+        if (dVal < 0) {
+            dScale = -scaleArray[index];
+        } else {
+            dScale = scaleArray[index];
+        }
+
+        return dScale;
     }
 
 }
