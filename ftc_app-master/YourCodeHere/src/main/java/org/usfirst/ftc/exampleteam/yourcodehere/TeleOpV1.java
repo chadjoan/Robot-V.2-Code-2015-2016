@@ -27,9 +27,6 @@ public class TeleOpV1 extends SynchronousOpMode
     //Starting Position of the Tape Measure
     private int motorTapeStartPos;
 
-    //Motors
-
-
     // Declare drive motors
     DcMotor motorLeftFore;
     DcMotor motorLeftAft;
@@ -108,6 +105,7 @@ public class TeleOpV1 extends SynchronousOpMode
         }
     }
 
+    //Initialize and Map All Hardware
     private void hardwareMapping() throws InterruptedException {
         // Initialize drive motors
         motorLeftFore = hardwareMap.dcMotor.get("motorLeftFore");
@@ -170,16 +168,37 @@ public class TeleOpV1 extends SynchronousOpMode
     public void triggerZipline() {
         if (isBlue){
             if (atRestTriggers)
+                servoRightZip.setPosition(ARBITRARYDOUBLE); //Needs resting and active servo positions
+            else
                 servoRightZip.setPosition(ARBITRARYDOUBLE);
-            servoRightZip.setPosition(ARBITRARYDOUBLE);
         }
         else{
             if (atRestTriggers)
-                servoLeftZip.setPosition(ARBITRARYDOUBLE); //ARBITRARY NUMBER, NEEDS VALUE
+                servoLeftZip.setPosition(ARBITRARYDOUBLE);
             else
                 servoLeftZip.setPosition(ARBITRARYDOUBLE);
         }
         atRestTriggers = !atRestTriggers;
+    }
+
+    public void extendTapeAuto() throws InterruptedException {
+        if (motorTape.isBusy())
+            motorTape.setPower(0);
+        else {
+            moveToPosTicks(ARBITRARYINT, motorTape, ARBITRARYDOUBLE); //First arbitrary int is how many ticks we want the motor to extend, second arbitrary double is where we want the tape to start slowing down.
+            while (motorTape.isBusy())
+                this.idle();
+        }
+    }
+
+    public void retractTapeAuto() throws InterruptedException {
+        if (motorTape.isBusy())
+            motorTape.setPower(0);
+        else {
+            moveToPosTicks(motorTapeStartPos, motorTape, ARBITRARYDOUBLE);
+            while (motorTape.isBusy())
+                this.idle();
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -198,44 +217,25 @@ public class TeleOpV1 extends SynchronousOpMode
         motorRightAft.setPower(power);
     }
 
-    public void extendTapeAuto() throws InterruptedException {
-        boolean notCalledAgain = true;
-        if (motorTape.isBusy())
-            motorTape.setPower(0);
-        else {
-            moveMotorTicks(ARBITRARYINT, motorTape, ARBITRARYDOUBLE); //First arbitrary int is how many ticks we want the motor to extend, second arbitrary double is where we want the tape to start slowing down.
-            while (motorTape.isBusy())
-            this.idle();
-        }
-    }
+    public void moveSlideInches(double distance) throws InterruptedException{
+        distance = ARBITRARYDOUBLE;
+        int ticks = (int) (distance * 1120); //1120 ticks in one motor rotation NEED MATH FOR GEAR RATIOS
 
-    public void moveSlide(int distance) throws InterruptedException{
-        int ticks = distance * 1120; //1120 ticks in one motor rotation
-        motorSlide.setTargetPosition(motorSlide.getCurrentPosition() + ticks);
-
-        motorSlide.setPower(ARBITRARYDOUBLE);
-
-        motorSlide.setMode(DcMotorController.RunMode.RUN_TO_POSITION);
-
-        while (motorSlide.isBusy())
-            this.idle();
+        moveToPosTicks(ticks, motorSlide, ARBITRARYDOUBLE);
 
         motorSlide.setPower(0);
 
     }
 
     //thresh: distance from target at which motor slows
-    private void moveMotorTicks(int ticks, DcMotor motor, double thresh) throws InterruptedException{
+    private void moveToPosTicks(int ticks, DcMotor motor, double thresh) {
 
         motor.setTargetPosition(motor.getCurrentPosition() + ticks);
 
-        setCurvedPower(motor, thresh, 100, 60); //THESE ARE ARBITRARY NUMBERS THAT WE WILL REFINE THROUGH TESTING.
+        motor.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
 
-        motor.setMode(DcMotorController.RunMode.RUN_TO_POSITION);
-
-        while (motor.isBusy())
-            this.idle();
-
+        while (motor.getCurrentPosition() < motor.getTargetPosition() - ARBITRARYDOUBLE || motor.getCurrentPosition() > motor.getCurrentPosition() + ARBITRARYDOUBLE)
+            setCurvedPower(motor, thresh, 100, 60); // ^ THESE ARE ARBITRARY NUMBERS THAT WE WILL REFINE THROUGH TESTING. They Are supposed to be the range in which the motors can stop giving power
         motor.setPower(0);
     }
 
@@ -265,12 +265,11 @@ public class TeleOpV1 extends SynchronousOpMode
             index = 16;
 
 
-        double dScale = 0.0;
-        if (dVal < 0) {
+        double dScale;
+        if (dVal < 0)
             dScale = -scaleArray[index];
-        } else {
+        else
             dScale = scaleArray[index];
-        }
 
         return dScale;
     }
