@@ -7,6 +7,7 @@ import org.swerverobotics.library.interfaces.*;
 /**
  * Version 1.0 of Team Avalanche 6253's TeleOp program for Robot version 2.0.
  * Currently most distance and position values are arbitrary due to not having a complete robot we can test values on.
+ * Also need to figure out how to add auto methods
  */
 @TeleOp(name="TeleOp V1")
 public class TeleOpV1 extends SynchronousOpMode
