@@ -7,9 +7,8 @@ import org.swerverobotics.library.interfaces.*;
 /**
  * Version 1.0 of Team Avalanche 6253's TeleOp program for Robot version 2.0.
  * Currently most distance and position values are arbitrary due to not having a complete robot we can test values on.
- * Also need to figure out how to add auto methods
  */
-@TeleOp(name="TeleOp V1")
+@TeleOp (name="TeleOpV1")
 public class TeleOpV1 extends SynchronousOpMode
 {
     // Variables
@@ -27,6 +26,12 @@ public class TeleOpV1 extends SynchronousOpMode
 
     //Starting Position of the Tape Measure
     private int motorTapeStartPos;
+    private final int DISTANCE_TO_HANG = ARBITRARYINT;
+    private final double NEEDS_THRESH = ARBITRARYDOUBLE;
+    private final double RIGHT_ZIP_UP = ARBITRARYDOUBLE;
+    private final double RIGHT_ZIP_DOWN = ARBITRARYDOUBLE;
+    private final double LEFT_ZIP_UP = ARBITRARYDOUBLE;
+    private final double LEFT_ZIP_DOWN = ARBITRARYDOUBLE;
 
     // Declare drive motors
     DcMotor motorLeftFore;
@@ -66,7 +71,7 @@ public class TeleOpV1 extends SynchronousOpMode
     public void main() throws InterruptedException
     {
         hardwareMapping();
-
+/*
         while (!isStarted()){
             if(updateGamepads()){
                 //////////////////////////////////////////////// Selects alliance
@@ -82,7 +87,7 @@ public class TeleOpV1 extends SynchronousOpMode
                 ////////////////////////////////////////////////
             }
         }
-
+*/
         // Go go gadget robot!
         while (opModeIsActive())
         {
@@ -92,12 +97,19 @@ public class TeleOpV1 extends SynchronousOpMode
                     telemetry.update();
                 }
 
+                if (gamepad1.b) {
+                    moveToPosTicks(1120, motorLeftAft, 200);
+                    moveToPosTicks(1120, motorLeftFore, 200);
+                    moveToPosTicks(1120, motorRightAft, 200);
+                    moveToPosTicks(1120, motorLeftFore, 200);
+                }
+
+
                 //Read Joystick Data and Update Speed of Left and Right Motors
                 ///////////////////////////////////////////////////////
                 setLeftDrivePower(scaleInput(gamepad1.left_stick_y));//
                 setRightDrivePower(gamepad1.right_stick_y);          //
                 ///////////////////////////////////////////////////////
-
 
 
             }
@@ -134,8 +146,6 @@ public class TeleOpV1 extends SynchronousOpMode
         // Initialize motor that raises and lowers the collection arm
         motorArm = hardwareMap.dcMotor.get("motorArm");
 
-        motorArm.setDirection(DcMotor.Direction.REVERSE);
-
         // Initialize zipline flipping servos
         servoLeftZip = hardwareMap.servo.get("servoLeftZip");
         servoRightZip = hardwareMap.servo.get("servoRightZip");
@@ -169,15 +179,15 @@ public class TeleOpV1 extends SynchronousOpMode
     public void triggerZipline() {
         if (isBlue){
             if (atRestTriggers)
-                servoRightZip.setPosition(ARBITRARYDOUBLE); //Needs resting and active servo positions
+                servoRightZip.setPosition(RIGHT_ZIP_UP); //Needs resting and active servo positions
             else
-                servoRightZip.setPosition(ARBITRARYDOUBLE);
+                servoRightZip.setPosition(RIGHT_ZIP_DOWN);
         }
         else{
             if (atRestTriggers)
-                servoLeftZip.setPosition(ARBITRARYDOUBLE);
+                servoLeftZip.setPosition(RIGHT_ZIP_UP);
             else
-                servoLeftZip.setPosition(ARBITRARYDOUBLE);
+                servoLeftZip.setPosition(RIGHT_ZIP_DOWN);
         }
         atRestTriggers = !atRestTriggers;
     }
@@ -186,7 +196,7 @@ public class TeleOpV1 extends SynchronousOpMode
         if (motorTape.isBusy())
             motorTape.setPower(0);
         else {
-            moveToPosTicks(ARBITRARYINT, motorTape, ARBITRARYDOUBLE); //First arbitrary int is how many ticks we want the motor to extend, second arbitrary double is where we want the tape to start slowing down.
+            moveToPosTicks(DISTANCE_TO_HANG, motorTape, NEEDS_THRESH); //First arbitrary int is how many ticks we want the motor to extend, second arbitrary double is where we want the tape to start slowing down.
             while (motorTape.isBusy())
                 this.idle();
         }
@@ -196,7 +206,7 @@ public class TeleOpV1 extends SynchronousOpMode
         if (motorTape.isBusy())
             motorTape.setPower(0);
         else {
-            moveToPosTicks(motorTapeStartPos, motorTape, ARBITRARYDOUBLE);
+            moveToPosTicks(motorTapeStartPos, motorTape, NEEDS_THRESH);
             while (motorTape.isBusy())
                 this.idle();
         }
@@ -218,11 +228,11 @@ public class TeleOpV1 extends SynchronousOpMode
         motorRightAft.setPower(power);
     }
 
-    public void moveSlideInches(double distance) throws InterruptedException{
+    public void moveSlideInches(double distance) {
         distance = ARBITRARYDOUBLE;
         int ticks = (int) (distance * 1120); //1120 ticks in one motor rotation NEED MATH FOR GEAR RATIOS
 
-        moveToPosTicks(ticks, motorSlide, ARBITRARYDOUBLE);
+        moveToPosTicks(ticks, motorSlide, NEEDS_THRESH);
 
         motorSlide.setPower(0);
 
@@ -234,9 +244,12 @@ public class TeleOpV1 extends SynchronousOpMode
         motor.setTargetPosition(motor.getCurrentPosition() + ticks);
 
         motor.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
-
-        while (motor.getCurrentPosition() < motor.getTargetPosition() - ARBITRARYDOUBLE || motor.getCurrentPosition() > motor.getCurrentPosition() + ARBITRARYDOUBLE)
-            setCurvedPower(motor, thresh, 100, 60); // ^ THESE ARE ARBITRARY NUMBERS THAT WE WILL REFINE THROUGH TESTING. They Are supposed to be the range in which the motors can stop giving power
+        if (motor.getCurrentPosition() > motor.getTargetPosition())
+            while (motor.getCurrentPosition() > motor.getTargetPosition())
+                setCurvedPower(motor, thresh, 100, 60); // ^ THESE ARE ARBITRARY NUMBERS THAT WE WILL REFINE THROUGH TESTING. They Are supposed to be the range in which the motors can stop giving power
+        else
+            while (motor.getCurrentPosition() < motor.getTargetPosition())
+                setCurvedPower(motor, thresh, 100, 60);
         motor.setPower(0);
     }
 
