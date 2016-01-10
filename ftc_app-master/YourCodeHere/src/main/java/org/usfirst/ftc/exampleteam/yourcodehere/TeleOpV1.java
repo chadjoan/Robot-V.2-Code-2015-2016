@@ -79,14 +79,8 @@ public class TeleOpV1 extends SynchronousOpMode
     private boolean dRightEnable1 = true;
     private boolean leftBumperEnable1 = true;
     private boolean rightBumperEnable1 = true;
-    private boolean leftTriggerEnable1 = true;
-    private boolean rightTriggerEnable1 = true;
     private boolean leftStickButtonEnable1 = true;
     private boolean rightStickButtonEnable1 = true;
-    private boolean leftStickXEnable1 = true;
-    private boolean leftStickYEnable1 = true;
-    private boolean rightStickXEnable1 = true;
-    private boolean rightStickYEnable1 = true;
     private boolean startEnable1 = true;
     private boolean aEnable2 = true;
     private boolean bEnable2 = true;
@@ -120,13 +114,14 @@ public class TeleOpV1 extends SynchronousOpMode
         // Go go gadget robot!
         while (opModeIsActive())
         {
-            if (updateGamepads()) {
-                if (gamepad1.a) {
+            if (updateGamepads() || true) {
+                if (gamepad1.x && xEnable1) {
                     telemetry.addData("Button Works!", "Test");
                     telemetry.update();
+                    xEnable1 = false;
                 }
 
-                if (gamepad1.b) {
+                if (gamepad1.b && bEnable1) {
                     testRunning = !testRunning;
                     if (testRunning == false)
                         motorSlide.setPower(0);
@@ -134,11 +129,13 @@ public class TeleOpV1 extends SynchronousOpMode
                         motorSlide.setTargetPosition(motorSlide.getCurrentPosition() + 1680*2);
                         motorSlide.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
                     }
+                    bEnable1 = false;
                 }
 
-                if (gamepad1.a)
+                if (gamepad1.a && aEnable1)
                 {
                     testContMotor2(1680*2);
+                    bEnable1 = false;
                 }
 
                 if (testRunning) {
@@ -150,8 +147,12 @@ public class TeleOpV1 extends SynchronousOpMode
                 setRightDrivePower(gamepad1.right_stick_y);
 
             }
+
+            ifHeld();
+
             telemetry.update();
             idle();
+
         }
     }
 
@@ -232,56 +233,85 @@ public class TeleOpV1 extends SynchronousOpMode
             dUpEnable1 = true;
         }
 
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
+        if (gamepad1.dpad_left && !dLeftEnable1) {
+            dLeftEnable1 = true;
         }
 
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
+        if (gamepad1.dpad_right && !dRightEnable1) {
+            dRightEnable1 = true;
         }
 
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
+        if (gamepad1.left_bumper && !leftBumperEnable1) {
+            leftBumperEnable1 = true;
         }
 
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
+        if (gamepad1.right_bumper && !rightBumperEnable1) {
+            rightBumperEnable1 = true;
         }
 
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
+        if (gamepad1.right_stick_button && !rightStickButtonEnable1) {
+            rightStickButtonEnable1 = true;
         }
 
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
+        if (gamepad1.left_stick_button && !leftStickButtonEnable1) {
+            leftStickButtonEnable1 = true;
         }
 
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
+        if (gamepad1.start && !startEnable1) {
+            startEnable2 = true;
+        }
+        if (gamepad2.a && !aEnable1) {
+            aEnable2 = true;
         }
 
+        if (gamepad2.b && !bEnable1) {
+            bEnable2 = true;
+        }
 
+        if (gamepad2.x && !xEnable1) {
+            xEnable2 = true;
+        }
 
+        if (gamepad2.y && !yEnable1) {
+            aEnable2 = true;
+        }
 
-        private boolean aEnable = true;
-        private boolean bEnable = true;
-        private boolean xEnalbe = true;
-        private boolean yEnable = true;
-        private boolean dUpEnable = true;
-        private boolean dDownEnable = true;
-        private boolean dLeftEnable = true;
-        private boolean dRightEnable = true;
-        private boolean leftBumperEnable = true;
-        private boolean rightBumperEnable = true;
-        private boolean leftTriggerEnable = true;
-        private boolean rightTriggerEnable = true;
-        private boolean leftStickButtonEnable = true;
-        private boolean rightStickButtonEnable = true;
-        private boolean leftStickXEnable = true;
-        private boolean leftStickYEnable = true;
-        private boolean rightStickXEnable = true;
-        private boolean rightStickYEnable = true;
-        private boolean startEnable = true;
+        if (gamepad2.dpad_down && !dDownEnable1) {
+            dDownEnable2 = true;
+        }
+
+        if (gamepad2.dpad_up && !dUpEnable1) {
+            dUpEnable2 = true;
+        }
+
+        if (gamepad2.dpad_left && !dLeftEnable1) {
+            dLeftEnable2 = true;
+        }
+
+        if (gamepad2.dpad_right && !dRightEnable1) {
+            dRightEnable2 = true;
+        }
+
+        if (gamepad2.left_bumper && !leftBumperEnable1) {
+            leftBumperEnable2 = true;
+        }
+
+        if (gamepad2.right_bumper && !rightBumperEnable1) {
+            rightBumperEnable2 = true;
+        }
+
+        if (gamepad2.right_stick_button && !rightStickButtonEnable1) {
+            rightStickButtonEnable2 = true;
+        }
+
+        if (gamepad2.left_stick_button && !leftStickButtonEnable1) {
+            leftStickButtonEnable2 = true;
+        }
+
+        if (gamepad2.start && !startEnable1) {
+            startEnable2 = true;
+        }
+
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
