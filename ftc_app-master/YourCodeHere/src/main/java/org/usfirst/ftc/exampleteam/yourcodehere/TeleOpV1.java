@@ -13,6 +13,7 @@ public class TeleOpV1 extends SynchronousOpMode
 {
     // Variables
 
+    private boolean testRunning = false; //test to see if cont method works
 
     // defaults to blue alliance
     private boolean isBlue = true;
@@ -67,27 +68,55 @@ public class TeleOpV1 extends SynchronousOpMode
     // Declare sensors
     GyroSensor gyro;
 
+    // Enable Booleans- basically so that you can tell if a button and released
+    private boolean aEnable1 = true;
+    private boolean bEnable1 = true;
+    private boolean xEnable1 = true;
+    private boolean yEnable1 = true;
+    private boolean dUpEnable1 = true;
+    private boolean dDownEnable1 = true;
+    private boolean dLeftEnable1 = true;
+    private boolean dRightEnable1 = true;
+    private boolean leftBumperEnable1 = true;
+    private boolean rightBumperEnable1 = true;
+    private boolean leftTriggerEnable1 = true;
+    private boolean rightTriggerEnable1 = true;
+    private boolean leftStickButtonEnable1 = true;
+    private boolean rightStickButtonEnable1 = true;
+    private boolean leftStickXEnable1 = true;
+    private boolean leftStickYEnable1 = true;
+    private boolean rightStickXEnable1 = true;
+    private boolean rightStickYEnable1 = true;
+    private boolean startEnable1 = true;
+    private boolean aEnable2 = true;
+    private boolean bEnable2 = true;
+    private boolean xEnable2 = true;
+    private boolean yEnable2 = true;
+    private boolean dUpEnable2 = true;
+    private boolean dDownEnable2 = true;
+    private boolean dLeftEnable2 = true;
+    private boolean dRightEnable2 = true;
+    private boolean leftBumperEnable2 = true;
+    private boolean rightBumperEnable2 = true;
+    private boolean leftTriggerEnable2 = true;
+    private boolean rightTriggerEnable2 = true;
+    private boolean leftStickButtonEnable2 = true;
+    private boolean rightStickButtonEnable2 = true;
+    private boolean leftStickXEnable2 = true;
+    private boolean leftStickYEnable2 = true;
+    private boolean rightStickXEnable2 = true;
+    private boolean rightStickYEnable2 = true;
+    private boolean startEnable2 = true;
+
+
+
     @Override
     public void main() throws InterruptedException
     {
         hardwareMapping();
-/*
-        while (!isStarted()){
-            if(updateGamepads()){
-                //////////////////////////////////////////////// Selects alliance
-                if(gamepad1.x) {                              // x button for blue (button color is blue)
-                    isBlue = true;                            //
-                    telemetry.addData("alliance", "blue");    //
-                }                                             //
-                if(gamepad1.b) {                              // b button for red (button color is red)
-                    isBlue = false;                           //
-                    telemetry.addData("alliance", "red");     //
-                }                                             //
-                telemetry.update();                           //
-                ////////////////////////////////////////////////
-            }
-        }
-*/
+
+        waitForStart();
+
         // Go go gadget robot!
         while (opModeIsActive())
         {
@@ -98,19 +127,27 @@ public class TeleOpV1 extends SynchronousOpMode
                 }
 
                 if (gamepad1.b) {
-                    moveToPosTicks(1120, motorLeftAft, 200);
-                    moveToPosTicks(1120, motorLeftFore, 200);
-                    moveToPosTicks(1120, motorRightAft, 200);
-                    moveToPosTicks(1120, motorLeftFore, 200);
+                    testRunning = !testRunning;
+                    if (testRunning == false)
+                        motorSlide.setPower(0);
+                    else {
+                        motorSlide.setTargetPosition(motorSlide.getCurrentPosition() + 1680*2);
+                        motorSlide.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+                    }
                 }
 
+                if (gamepad1.a)
+                {
+                    testContMotor2(1680*2);
+                }
+
+                if (testRunning) {
+                    testContMotor();
+                }
 
                 //Read Joystick Data and Update Speed of Left and Right Motors
-                ///////////////////////////////////////////////////////
-                setLeftDrivePower(scaleInput(gamepad1.left_stick_y));//
-                setRightDrivePower(gamepad1.right_stick_y);          //
-                ///////////////////////////////////////////////////////
-
+                setLeftDrivePower(scaleInput(gamepad1.left_stick_y));
+                setRightDrivePower(gamepad1.right_stick_y);
 
             }
             telemetry.update();
@@ -170,6 +207,83 @@ public class TeleOpV1 extends SynchronousOpMode
 
     }
 
+    private void ifHeld(){
+        if (gamepad1.a && !aEnable1) {
+            aEnable1 = true;
+        }
+
+        if (gamepad1.b && !bEnable1) {
+            bEnable1 = true;
+        }
+
+        if (gamepad1.x && !xEnable1) {
+            xEnable1 = true;
+        }
+
+        if (gamepad1.y && !yEnable1) {
+            aEnable1 = true;
+        }
+
+        if (gamepad1.dpad_down && !dDownEnable1) {
+            dDownEnable1 = true;
+        }
+
+        if (gamepad1.dpad_up && !dUpEnable1) {
+            dUpEnable1 = true;
+        }
+
+        if (gamepad1.a && !aEnable1) {
+            aEnable1 = true;
+        }
+
+        if (gamepad1.a && !aEnable1) {
+            aEnable1 = true;
+        }
+
+        if (gamepad1.a && !aEnable1) {
+            aEnable1 = true;
+        }
+
+        if (gamepad1.a && !aEnable1) {
+            aEnable1 = true;
+        }
+
+        if (gamepad1.a && !aEnable1) {
+            aEnable1 = true;
+        }
+
+        if (gamepad1.a && !aEnable1) {
+            aEnable1 = true;
+        }
+
+        if (gamepad1.a && !aEnable1) {
+            aEnable1 = true;
+        }
+
+
+
+
+        private boolean aEnable = true;
+        private boolean bEnable = true;
+        private boolean xEnalbe = true;
+        private boolean yEnable = true;
+        private boolean dUpEnable = true;
+        private boolean dDownEnable = true;
+        private boolean dLeftEnable = true;
+        private boolean dRightEnable = true;
+        private boolean leftBumperEnable = true;
+        private boolean rightBumperEnable = true;
+        private boolean leftTriggerEnable = true;
+        private boolean rightTriggerEnable = true;
+        private boolean leftStickButtonEnable = true;
+        private boolean rightStickButtonEnable = true;
+        private boolean leftStickXEnable = true;
+        private boolean leftStickYEnable = true;
+        private boolean rightStickXEnable = true;
+        private boolean rightStickYEnable = true;
+        private boolean startEnable = true;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                            //
     //                                     main methods                                           //
@@ -196,7 +310,7 @@ public class TeleOpV1 extends SynchronousOpMode
         if (motorTape.isBusy())
             motorTape.setPower(0);
         else {
-            moveToPosTicks(DISTANCE_TO_HANG, motorTape, NEEDS_THRESH); //First arbitrary int is how many ticks we want the motor to extend, second arbitrary double is where we want the tape to start slowing down.
+            //moveToPosTicks(DISTANCE_TO_HANG, motorTape, NEEDS_THRESH); //First arbitrary int is how many ticks we want the motor to extend, second arbitrary double is where we want the tape to start slowing down.
             while (motorTape.isBusy())
                 this.idle();
         }
@@ -206,7 +320,7 @@ public class TeleOpV1 extends SynchronousOpMode
         if (motorTape.isBusy())
             motorTape.setPower(0);
         else {
-            moveToPosTicks(motorTapeStartPos, motorTape, NEEDS_THRESH);
+           // moveToPosTicks(motorTapeStartPos, motorTape, NEEDS_THRESH);
             while (motorTape.isBusy())
                 this.idle();
         }
@@ -219,26 +333,23 @@ public class TeleOpV1 extends SynchronousOpMode
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     public void setLeftDrivePower(double power) {
+        motorLeftFore.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorLeftAft.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
         motorLeftFore.setPower(power);
         motorLeftAft.setPower(power);
     }
 
     public void setRightDrivePower(double power){
+        motorRightAft.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorRightFore.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
         motorRightFore.setPower(power);
         motorRightAft.setPower(power);
     }
 
-    public void moveSlideInches(double distance) {
-        distance = ARBITRARYDOUBLE;
-        int ticks = (int) (distance * 1120); //1120 ticks in one motor rotation NEED MATH FOR GEAR RATIOS
-
-        moveToPosTicks(ticks, motorSlide, NEEDS_THRESH);
-
-        motorSlide.setPower(0);
-
-    }
 
     //thresh: distance from target at which motor slows
+
+    /* THIS METHOD DOES NOT WORK - Cannot run other operations while this is running due to entering while loop and not exiting
     private void moveToPosTicks(int ticks, DcMotor motor, double thresh) {
 
         motor.setTargetPosition(motor.getCurrentPosition() + ticks);
@@ -252,6 +363,7 @@ public class TeleOpV1 extends SynchronousOpMode
                 setCurvedPower(motor, thresh, 100, 60);
         motor.setPower(0);
     }
+    */
 
     //thresh: distance from target at which motor slows
     public void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) {
@@ -288,4 +400,46 @@ public class TeleOpV1 extends SynchronousOpMode
         return dScale;
     }
 
+    public void testContMotor(){
+        if (motorSlide.getCurrentPosition() < motorSlide.getTargetPosition()) {
+            setCurvedPower(motorSlide, 200, 100, 60);
+        }
+        else {
+            motorSlide.setPower(0);
+            testRunning = false;
+        }
+    }
+
+    public void testContMotor2(int ticks){
+        motorSlide.setTargetPosition(ticks + motorSlide.getCurrentPosition());
+        motorSlide.setMode(DcMotorController.RunMode.RUN_TO_POSITION);
+    }
+
+    public void retractSlide(String height){ //Can be either top mid or bot
+
+    }
+
+    public void score(String height){  // can be either top mid or bot
+
+    }
+
+    public void toggleHarvester(double power){
+
+    }
+
+    public void loadDispenser(){
+
+    }
+
+    public void cancelAll(){
+
+    }
+
+    public void dumpDispenser(){
+
+    }
+
+    public void extendSlide(String height){ //Can be either top mid or bot
+
+    }
 }
