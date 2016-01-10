@@ -114,7 +114,7 @@ public class TeleOpV1 extends SynchronousOpMode
         // Go go gadget robot!
         while (opModeIsActive())
         {
-            if (updateGamepads() || true) {
+            if (updateGamepads()) {
                 if (gamepad1.x && xEnable1) {
                     telemetry.addData("Button Works!", "Test");
                     telemetry.update();
@@ -138,9 +138,6 @@ public class TeleOpV1 extends SynchronousOpMode
                     bEnable1 = false;
                 }
 
-                if (testRunning) {
-                    testContMotor();
-                }
 
                 //Read Joystick Data and Update Speed of Left and Right Motors
                 setLeftDrivePower(scaleInput(gamepad1.left_stick_y));
@@ -153,6 +150,10 @@ public class TeleOpV1 extends SynchronousOpMode
             telemetry.update();
             idle();
 
+        }
+
+        if (testRunning) {
+            testContMotor();
         }
     }
 
