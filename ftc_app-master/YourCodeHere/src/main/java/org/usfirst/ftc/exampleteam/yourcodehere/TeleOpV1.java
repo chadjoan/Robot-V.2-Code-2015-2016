@@ -68,41 +68,6 @@ public class TeleOpV1 extends SynchronousOpMode
     // Declare sensors
     GyroSensor gyro;
 
-    // Enable Booleans- basically so that you can tell if a button and released
-    private boolean aEnable1 = true;
-    private boolean bEnable1 = true;
-    private boolean xEnable1 = true;
-    private boolean yEnable1 = true;
-    private boolean dUpEnable1 = true;
-    private boolean dDownEnable1 = true;
-    private boolean dLeftEnable1 = true;
-    private boolean dRightEnable1 = true;
-    private boolean leftBumperEnable1 = true;
-    private boolean rightBumperEnable1 = true;
-    private boolean leftStickButtonEnable1 = true;
-    private boolean rightStickButtonEnable1 = true;
-    private boolean startEnable1 = true;
-    private boolean aEnable2 = true;
-    private boolean bEnable2 = true;
-    private boolean xEnable2 = true;
-    private boolean yEnable2 = true;
-    private boolean dUpEnable2 = true;
-    private boolean dDownEnable2 = true;
-    private boolean dLeftEnable2 = true;
-    private boolean dRightEnable2 = true;
-    private boolean leftBumperEnable2 = true;
-    private boolean rightBumperEnable2 = true;
-    private boolean leftTriggerEnable2 = true;
-    private boolean rightTriggerEnable2 = true;
-    private boolean leftStickButtonEnable2 = true;
-    private boolean rightStickButtonEnable2 = true;
-    private boolean leftStickXEnable2 = true;
-    private boolean leftStickYEnable2 = true;
-    private boolean rightStickXEnable2 = true;
-    private boolean rightStickYEnable2 = true;
-    private boolean startEnable2 = true;
-
-
 
     @Override
     public void main() throws InterruptedException
@@ -115,45 +80,32 @@ public class TeleOpV1 extends SynchronousOpMode
         while (opModeIsActive())
         {
             if (updateGamepads()) {
-                if (gamepad1.x && xEnable1) {
+                if (gamepad1.x) {
                     telemetry.addData("Button Works!", "Test");
                     telemetry.update();
-                    xEnable1 = false;
                 }
 
-                if (gamepad1.b && bEnable1) {
+                if (gamepad1.b) {
                     testRunning = !testRunning;
-                    if (testRunning == false)
+                    if (testRunning == false) {
                         motorSlide.setPower(0);
-                    else {
-                        motorSlide.setTargetPosition(motorSlide.getCurrentPosition() + 1680*2);
-                        motorSlide.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
                     }
-                    bEnable1 = false;
-                }
-
-                if (gamepad1.a && aEnable1)
-                {
-                    testContMotor2(1680*2);
-                    bEnable1 = false;
+                    else {
+                        motorSlide.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+                        motorSlide.setTargetPosition(motorSlide.getCurrentPosition() + 1680 * 5);
+                    }
                 }
 
 
                 //Read Joystick Data and Update Speed of Left and Right Motors
                 setLeftDrivePower(scaleInput(gamepad1.left_stick_y));
-                setRightDrivePower(gamepad1.right_stick_y);
+                setRightDrivePower(scaleInput(gamepad1.right_stick_y));
 
             }
-
-            ifHeld();
-
-            telemetry.update();
+            if (testRunning) {
+                testContMotor();
+            }
             idle();
-
-        }
-
-        if (testRunning) {
-            testContMotor();
         }
     }
 
@@ -166,8 +118,8 @@ public class TeleOpV1 extends SynchronousOpMode
         motorRightAft= hardwareMap.dcMotor.get("motorRightAft");
 
         //Left and right motors are on opposite sides and must spin opposite directions to go forward
-        motorRightFore.setDirection(DcMotor.Direction.REVERSE);
-        motorRightAft.setDirection(DcMotor.Direction.REVERSE);
+        motorLeftAft.setDirection(DcMotor.Direction.REVERSE);
+        motorLeftFore.setDirection(DcMotor.Direction.REVERSE);
 
         // Initialize drawer slide motor and servos
         motorSlide = hardwareMap.dcMotor.get("motorSlide");
@@ -206,114 +158,8 @@ public class TeleOpV1 extends SynchronousOpMode
         this.motorRightAft.setMode(DcMotorController.RunMode.RESET_ENCODERS);
         this.motorRightFore.setMode(DcMotorController.RunMode.RESET_ENCODERS);
         this.motorSlide.setMode(DcMotorController.RunMode.RESET_ENCODERS);
-
     }
 
-    private void ifHeld(){
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
-        }
-
-        if (gamepad1.b && !bEnable1) {
-            bEnable1 = true;
-        }
-
-        if (gamepad1.x && !xEnable1) {
-            xEnable1 = true;
-        }
-
-        if (gamepad1.y && !yEnable1) {
-            aEnable1 = true;
-        }
-
-        if (gamepad1.dpad_down && !dDownEnable1) {
-            dDownEnable1 = true;
-        }
-
-        if (gamepad1.dpad_up && !dUpEnable1) {
-            dUpEnable1 = true;
-        }
-
-        if (gamepad1.dpad_left && !dLeftEnable1) {
-            dLeftEnable1 = true;
-        }
-
-        if (gamepad1.dpad_right && !dRightEnable1) {
-            dRightEnable1 = true;
-        }
-
-        if (gamepad1.left_bumper && !leftBumperEnable1) {
-            leftBumperEnable1 = true;
-        }
-
-        if (gamepad1.right_bumper && !rightBumperEnable1) {
-            rightBumperEnable1 = true;
-        }
-
-        if (gamepad1.right_stick_button && !rightStickButtonEnable1) {
-            rightStickButtonEnable1 = true;
-        }
-
-        if (gamepad1.left_stick_button && !leftStickButtonEnable1) {
-            leftStickButtonEnable1 = true;
-        }
-
-        if (gamepad1.start && !startEnable1) {
-            startEnable2 = true;
-        }
-        if (gamepad2.a && !aEnable1) {
-            aEnable2 = true;
-        }
-
-        if (gamepad2.b && !bEnable1) {
-            bEnable2 = true;
-        }
-
-        if (gamepad2.x && !xEnable1) {
-            xEnable2 = true;
-        }
-
-        if (gamepad2.y && !yEnable1) {
-            aEnable2 = true;
-        }
-
-        if (gamepad2.dpad_down && !dDownEnable1) {
-            dDownEnable2 = true;
-        }
-
-        if (gamepad2.dpad_up && !dUpEnable1) {
-            dUpEnable2 = true;
-        }
-
-        if (gamepad2.dpad_left && !dLeftEnable1) {
-            dLeftEnable2 = true;
-        }
-
-        if (gamepad2.dpad_right && !dRightEnable1) {
-            dRightEnable2 = true;
-        }
-
-        if (gamepad2.left_bumper && !leftBumperEnable1) {
-            leftBumperEnable2 = true;
-        }
-
-        if (gamepad2.right_bumper && !rightBumperEnable1) {
-            rightBumperEnable2 = true;
-        }
-
-        if (gamepad2.right_stick_button && !rightStickButtonEnable1) {
-            rightStickButtonEnable2 = true;
-        }
-
-        if (gamepad2.left_stick_button && !leftStickButtonEnable1) {
-            leftStickButtonEnable2 = true;
-        }
-
-        if (gamepad2.start && !startEnable1) {
-            startEnable2 = true;
-        }
-
-    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                            //
@@ -363,6 +209,17 @@ public class TeleOpV1 extends SynchronousOpMode
     //                                                                                            //
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
+    public void autoWrapper(DcMotor motor, int motorType, double distance, double power, boolean whichMotor) {
+        whichMotor = !whichMotor;
+        if (testRunning == false) {
+            motorSlide.setPower(0);
+        }
+        else {
+            motorSlide.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+            motorSlide.setTargetPosition(motorSlide.getCurrentPosition() + 1680 * 5);
+        }
+    }
+
     public void setLeftDrivePower(double power) {
         motorLeftFore.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
         motorLeftAft.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
@@ -394,16 +251,28 @@ public class TeleOpV1 extends SynchronousOpMode
                 setCurvedPower(motor, thresh, 100, 60);
         motor.setPower(0);
     }
-    */
+     QUADRATIC POWER SLOPE
 
     //thresh: distance from target at which motor slows
-    public void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) {
+    /*public void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) {
         int target = motor.getTargetPosition();
         if(target - motor.getCurrentPosition() > thresh)
             motor.setPower(inputPower);
         else {
             double overThr = motor.getCurrentPosition() - target + thresh;
             double power = inputPower-overThr*overThr/thresh/thresh*(inputPower - minPower);
+            motor.setPower(power);
+        }
+    }
+    */
+
+    public void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) {
+        int target = motor.getTargetPosition();
+        if(target - motor.getCurrentPosition() > thresh)
+            motor.setPower(inputPower);
+        else {
+            double overThr = motor.getCurrentPosition() - target + thresh;
+            double power = (inputPower - minPower)/(1+Math.pow(Math.E,Math.pow(overThr/thresh - .5, -4)*12)) + minPower;
             motor.setPower(power);
         }
     }
@@ -433,7 +302,7 @@ public class TeleOpV1 extends SynchronousOpMode
 
     public void testContMotor(){
         if (motorSlide.getCurrentPosition() < motorSlide.getTargetPosition()) {
-            setCurvedPower(motorSlide, 200, 100, 60);
+            setCurvedPower(motorSlide, 1000, 1, 0.3);
         }
         else {
             motorSlide.setPower(0);
@@ -441,9 +310,8 @@ public class TeleOpV1 extends SynchronousOpMode
         }
     }
 
-    public void testContMotor2(int ticks){
-        motorSlide.setTargetPosition(ticks + motorSlide.getCurrentPosition());
-        motorSlide.setMode(DcMotorController.RunMode.RUN_TO_POSITION);
+    public void moveToPosition(DcMotor motor) {
+
     }
 
     public void retractSlide(String height){ //Can be either top mid or bot
