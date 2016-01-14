@@ -33,7 +33,6 @@ public class TeleOpV1 extends SynchronousOpMode
     private final double RIGHT_ZIP_DOWN = ARBITRARYDOUBLE;
     private final double LEFT_ZIP_UP = ARBITRARYDOUBLE;
     private final double LEFT_ZIP_DOWN = ARBITRARYDOUBLE;
-
     // Declare drive motors
     DcMotor motorLeftFore;
     DcMotor motorLeftAft;
@@ -91,10 +90,11 @@ public class TeleOpV1 extends SynchronousOpMode
                         motorSlide.setPower(0);
                     }
                     else {
-                        motorSlide.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
                         motorSlide.setTargetPosition(motorSlide.getCurrentPosition() + 1680 * 5);
                     }
                 }
+
+                extendTapeManual(gamepad1.y);
 
 
                 //Read Joystick Data and Update Speed of Left and Right Motors
@@ -115,7 +115,7 @@ public class TeleOpV1 extends SynchronousOpMode
         motorLeftFore = hardwareMap.dcMotor.get("motorLeftFore");
         motorLeftAft = hardwareMap.dcMotor.get("motorLeftAft");
         motorRightFore = hardwareMap.dcMotor.get("motorRightFore");
-        motorRightAft= hardwareMap.dcMotor.get("motorRightAft");
+        motorRightAft = hardwareMap.dcMotor.get("motorRightAft");
 
         //Left and right motors are on opposite sides and must spin opposite directions to go forward
         motorLeftAft.setDirection(DcMotor.Direction.REVERSE);
@@ -158,6 +158,16 @@ public class TeleOpV1 extends SynchronousOpMode
         this.motorRightAft.setMode(DcMotorController.RunMode.RESET_ENCODERS);
         this.motorRightFore.setMode(DcMotorController.RunMode.RESET_ENCODERS);
         this.motorSlide.setMode(DcMotorController.RunMode.RESET_ENCODERS);
+
+        //Set Runmode for all motors to run using encoders
+        motorLeftFore.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorRightFore.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorLeftAft.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorRightAft.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorSlide.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorTape.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorArm.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorHarvest.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
     }
 
 
@@ -215,21 +225,16 @@ public class TeleOpV1 extends SynchronousOpMode
             motorSlide.setPower(0);
         }
         else {
-            motorSlide.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
             motorSlide.setTargetPosition(motorSlide.getCurrentPosition() + 1680 * 5);
         }
     }
 
     public void setLeftDrivePower(double power) {
-        motorLeftFore.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
-        motorLeftAft.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
         motorLeftFore.setPower(power);
         motorLeftAft.setPower(power);
     }
 
     public void setRightDrivePower(double power){
-        motorRightAft.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
-        motorRightFore.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
         motorRightFore.setPower(power);
         motorRightAft.setPower(power);
     }
@@ -322,10 +327,6 @@ public class TeleOpV1 extends SynchronousOpMode
 
     }
 
-    public void toggleHarvester(double power){
-
-    }
-
     public void loadDispenser(){
 
     }
@@ -339,6 +340,41 @@ public class TeleOpV1 extends SynchronousOpMode
     }
 
     public void extendSlide(String height){ //Can be either top mid or bot
+        if (height.equals("top")) {
 
+        }
+
+        if (height.equals("mid")) {
+        }
+
+        if (height.equals("bot")) {
+
+        }
     }
+
+    public void extendTapeManual(boolean b) {
+        if (b)
+            motorTape.setPower(1); //ARBITRARYVALUE (JUST FOR TESTING)
+        else
+            motorTape.setPower(0.0);
+    }
+
+    public void retractTapeManual(boolean b) {
+        if (b)
+            motorTape.setPower(-1); //ARBITRARYVALUE (Just for testing)
+        else
+            motorTape.setPower(0.0);
+    }
+
+    public void toggleHarvester(double power) {
+        if(motorHarvest.getPower() == 0.0)
+            motorHarvest.setPower(power);
+        else
+            motorHarvest.setPower(0.0);
+    }
+
+    public void reverseHarvester(){
+        motorHarvest.setDirection(DcMotor.Direction.REVERSE);
+    }
+
 }
