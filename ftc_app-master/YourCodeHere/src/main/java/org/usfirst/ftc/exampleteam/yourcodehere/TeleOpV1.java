@@ -1,6 +1,7 @@
 package org.usfirst.ftc.exampleteam.yourcodehere;
 
 import com.qualcomm.robotcore.hardware.*;
+
 import org.swerverobotics.library.*;
 import org.swerverobotics.library.interfaces.*;
 
@@ -8,12 +9,17 @@ import org.swerverobotics.library.interfaces.*;
  * Version 1.0 of Team Avalanche 6253's TeleOp program for Robot version 2.0.
  * Currently most distance and position values are arbitrary due to not having a complete robot we can test values on.
  */
-@TeleOp (name="TeleOpV1")
-public class TeleOpV1 extends SynchronousOpMode
-{
+@TeleOp(name = "TeleOpV1")
+public class TeleOpV1 extends SynchronousOpMode {
     // Variables
 
-    private boolean testRunning = false; //test to see if cont method works
+    //Declare ModifiedBoolean methods. These methods decide whether an action is running or not.
+    private ModifiedBoolean testRunning = new ModifiedBoolean(false);
+    private ModifiedBoolean runningExtendTapeAuto = new ModifiedBoolean(false);
+    private ModifiedBoolean runningCancelAllArm = new ModifiedBoolean(false);
+    private ModifiedBoolean runningCancelAllTape = new ModifiedBoolean(false);
+    private ModifiedBoolean runningCancelAllSlide = new ModifiedBoolean(false);
+
 
     // defaults to blue alliance
     private boolean isBlue = true;
@@ -24,16 +30,24 @@ public class TeleOpV1 extends SynchronousOpMode
     // methods with these variables need values
     private final double ARBITRARYDOUBLE = 0;
     private final int ARBITRARYINT = 0;
+    private final boolean NEEDS_BUTTON_MAPPED = false;
 
-    //Starting Position of the Tape Measure
-    private int motorTapeStartPos;
+    //Declare starting positions for tape, arm, and slide motors
+    private int startPosTape;
+    private int startPosArm;
+    private int startPosSlide;
+
     private final int DISTANCE_TO_HANG = ARBITRARYINT;
     private final double NEEDS_THRESH = ARBITRARYDOUBLE;
     private final double RIGHT_ZIP_UP = ARBITRARYDOUBLE;
     private final double RIGHT_ZIP_DOWN = ARBITRARYDOUBLE;
     private final double LEFT_ZIP_UP = ARBITRARYDOUBLE;
     private final double LEFT_ZIP_DOWN = ARBITRARYDOUBLE;
-
+    private final int TICKS_IN_INCH_AFT = ARBITRARYINT;
+    private final int TICKS_IN_INCH_FORE = ARBITRARYINT;
+    private final int TICKS_IN_INCH_TAPE = ARBITRARYINT;
+    private final int TICKS_IN_DEGREE_ARM = ARBITRARYINT;
+    private final int TICKS_IN_INCH_SLIDE = ARBITRARYINT;
     // Declare drive motors
     DcMotor motorLeftFore;
     DcMotor motorLeftAft;
@@ -68,89 +82,71 @@ public class TeleOpV1 extends SynchronousOpMode
     // Declare sensors
     GyroSensor gyro;
 
-    // Enable Booleans- basically so that you can tell if a button and released
-    private boolean aEnable1 = true;
-    private boolean bEnable1 = true;
-    private boolean xEnable1 = true;
-    private boolean yEnable1 = true;
-    private boolean dUpEnable1 = true;
-    private boolean dDownEnable1 = true;
-    private boolean dLeftEnable1 = true;
-    private boolean dRightEnable1 = true;
-    private boolean leftBumperEnable1 = true;
-    private boolean rightBumperEnable1 = true;
-    private boolean leftTriggerEnable1 = true;
-    private boolean rightTriggerEnable1 = true;
-    private boolean leftStickButtonEnable1 = true;
-    private boolean rightStickButtonEnable1 = true;
-    private boolean leftStickXEnable1 = true;
-    private boolean leftStickYEnable1 = true;
-    private boolean rightStickXEnable1 = true;
-    private boolean rightStickYEnable1 = true;
-    private boolean startEnable1 = true;
-    private boolean aEnable2 = true;
-    private boolean bEnable2 = true;
-    private boolean xEnable2 = true;
-    private boolean yEnable2 = true;
-    private boolean dUpEnable2 = true;
-    private boolean dDownEnable2 = true;
-    private boolean dLeftEnable2 = true;
-    private boolean dRightEnable2 = true;
-    private boolean leftBumperEnable2 = true;
-    private boolean rightBumperEnable2 = true;
-    private boolean leftTriggerEnable2 = true;
-    private boolean rightTriggerEnable2 = true;
-    private boolean leftStickButtonEnable2 = true;
-    private boolean rightStickButtonEnable2 = true;
-    private boolean leftStickXEnable2 = true;
-    private boolean leftStickYEnable2 = true;
-    private boolean rightStickXEnable2 = true;
-    private boolean rightStickYEnable2 = true;
-    private boolean startEnable2 = true;
-
-
-
     @Override
-    public void main() throws InterruptedException
-    {
+    public void main() throws InterruptedException {
         hardwareMapping();
 
         waitForStart();
 
         // Go go gadget robot!
-        while (opModeIsActive())
-        {
+        while (opModeIsActive()) {
             if (updateGamepads()) {
-                if (gamepad1.a) {
+
+                //AUTOMATIC CONTROLS//
+
+                if (gamepad1.x) {
                     telemetry.addData("Button Works!", "Test");
                     telemetry.update();
                 }
 
+                if (NEEDS_BUTTON_MAPPED) {
+                    initPositionSet();
+                }
+
                 if (gamepad1.b) {
-                    testRunning = !testRunning;
-                    if (testRunning == false)
+                    testRunning.toggle();
+                    if (testRunning.getValue()) {
                         motorSlide.setPower(0);
-                    else {
-                        motorSlide.setTargetPosition(motorSlide.getCurrentPosition() + 1680*2);
-                        motorSlide.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+                    } else {
+                        motorSlide.setTargetPosition(motorSlide.getCurrentPosition() + 1680 * 5);
                     }
                 }
 
-                if (gamepad1.a)
-                {
-                    testContMotor2(1680*2);
-                }
 
-                if (testRunning) {
-                    testContMotor();
-                }
+
+                //MANUAL CONTROLS//
+                extendTapeManual(NEEDS_BUTTON_MAPPED);
+                retractTapeManual(NEEDS_BUTTON_MAPPED);
+
+                //starts and stops harvester
+                if(NEEDS_BUTTON_MAPPED)
+                    toggleHarvester(1);
+
+                //toggles harvester spin direction
+                if (NEEDS_BUTTON_MAPPED)
+                    reverseHarvester();
+
 
                 //Read Joystick Data and Update Speed of Left and Right Motors
                 setLeftDrivePower(scaleInput(gamepad1.left_stick_y));
-                setRightDrivePower(gamepad1.right_stick_y);
+                setRightDrivePower(scaleInput(gamepad1.right_stick_y));
+
+
+                if (NEEDS_BUTTON_MAPPED)
+                    initPositionSet();
+
+                if (NEEDS_BUTTON_MAPPED)
+                    triggerZipline();
 
             }
-            telemetry.update();
+
+            initPositionRun();
+
+            //Run tape motor till it reaches hang distance
+            runToPos(motorTape, ARBITRARYDOUBLE, runningExtendTapeAuto, null);
+            if (testRunning.getValue()) {
+                testContMotor();
+            }
             idle();
         }
     }
@@ -161,11 +157,11 @@ public class TeleOpV1 extends SynchronousOpMode
         motorLeftFore = hardwareMap.dcMotor.get("motorLeftFore");
         motorLeftAft = hardwareMap.dcMotor.get("motorLeftAft");
         motorRightFore = hardwareMap.dcMotor.get("motorRightFore");
-        motorRightAft= hardwareMap.dcMotor.get("motorRightAft");
+        motorRightAft = hardwareMap.dcMotor.get("motorRightAft");
 
         //Left and right motors are on opposite sides and must spin opposite directions to go forward
-        motorRightFore.setDirection(DcMotor.Direction.REVERSE);
-        motorRightAft.setDirection(DcMotor.Direction.REVERSE);
+        motorLeftAft.setDirection(DcMotor.Direction.REVERSE);
+        motorLeftFore.setDirection(DcMotor.Direction.REVERSE);
 
         // Initialize drawer slide motor and servos
         motorSlide = hardwareMap.dcMotor.get("motorSlide");
@@ -187,9 +183,6 @@ public class TeleOpV1 extends SynchronousOpMode
         servoLeftZip = hardwareMap.servo.get("servoLeftZip");
         servoRightZip = hardwareMap.servo.get("servoRightZip");
 
-        // Initialize tape tracking variable
-        motorTapeStartPos = motorTape.getCurrentPosition();
-
         // Initialize sensors
         gyro = hardwareMap.gyroSensor.get("gyro");
 
@@ -205,84 +198,22 @@ public class TeleOpV1 extends SynchronousOpMode
         this.motorRightFore.setMode(DcMotorController.RunMode.RESET_ENCODERS);
         this.motorSlide.setMode(DcMotorController.RunMode.RESET_ENCODERS);
 
+        //Set Runmode for all motors to run using encoders
+        motorLeftFore.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorRightFore.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorLeftAft.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorRightAft.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorSlide.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorTape.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorArm.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+        motorHarvest.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+
+        //keep track of the starting positions of arm, slide, and tape motors
+        startPosArm = motorArm.getCurrentPosition();
+        startPosSlide = motorSlide.getCurrentPosition();
+        startPosTape = motorSlide.getCurrentPosition();
     }
 
-    private void ifHeld(){
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
-        }
-
-        if (gamepad1.b && !bEnable1) {
-            bEnable1 = true;
-        }
-
-        if (gamepad1.x && !xEnable1) {
-            xEnable1 = true;
-        }
-
-        if (gamepad1.y && !yEnable1) {
-            aEnable1 = true;
-        }
-
-        if (gamepad1.dpad_down && !dDownEnable1) {
-            dDownEnable1 = true;
-        }
-
-        if (gamepad1.dpad_up && !dUpEnable1) {
-            dUpEnable1 = true;
-        }
-
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
-        }
-
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
-        }
-
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
-        }
-
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
-        }
-
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
-        }
-
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
-        }
-
-        if (gamepad1.a && !aEnable1) {
-            aEnable1 = true;
-        }
-
-
-
-
-        private boolean aEnable = true;
-        private boolean bEnable = true;
-        private boolean xEnalbe = true;
-        private boolean yEnable = true;
-        private boolean dUpEnable = true;
-        private boolean dDownEnable = true;
-        private boolean dLeftEnable = true;
-        private boolean dRightEnable = true;
-        private boolean leftBumperEnable = true;
-        private boolean rightBumperEnable = true;
-        private boolean leftTriggerEnable = true;
-        private boolean rightTriggerEnable = true;
-        private boolean leftStickButtonEnable = true;
-        private boolean rightStickButtonEnable = true;
-        private boolean leftStickXEnable = true;
-        private boolean leftStickYEnable = true;
-        private boolean rightStickXEnable = true;
-        private boolean rightStickYEnable = true;
-        private boolean startEnable = true;
-    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                            //
@@ -291,13 +222,12 @@ public class TeleOpV1 extends SynchronousOpMode
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     public void triggerZipline() {
-        if (isBlue){
+        if (isBlue) {
             if (atRestTriggers)
                 servoRightZip.setPosition(RIGHT_ZIP_UP); //Needs resting and active servo positions
             else
                 servoRightZip.setPosition(RIGHT_ZIP_DOWN);
-        }
-        else{
+        } else {
             if (atRestTriggers)
                 servoLeftZip.setPosition(RIGHT_ZIP_UP);
             else
@@ -306,7 +236,7 @@ public class TeleOpV1 extends SynchronousOpMode
         atRestTriggers = !atRestTriggers;
     }
 
-    public void extendTapeAuto() throws InterruptedException {
+/*    public void extendTapeAuto() throws InterruptedException {
         if (motorTape.isBusy())
             motorTape.setPower(0);
         else {
@@ -315,16 +245,71 @@ public class TeleOpV1 extends SynchronousOpMode
                 this.idle();
         }
     }
+  */
 
+    //extends the tape measure until it reaches the correct position to hang from the regular hanging position.
+    public void extendTapeAuto() {
+        runToPos(motorTape, ARBITRARYDOUBLE, runningExtendTapeAuto, null);
+    }
+
+    //retracts the tape until it reaches just a little above the starting position at the time of initialization
     public void retractTapeAuto() throws InterruptedException {
         if (motorTape.isBusy())
             motorTape.setPower(0);
         else {
-           // moveToPosTicks(motorTapeStartPos, motorTape, NEEDS_THRESH);
+            // moveToPosTicks(motorTapeStartPos, motorTape, NEEDS_THRESH);
             while (motorTape.isBusy())
                 this.idle();
         }
     }
+
+    public void extendTapeManual(boolean b) {
+        if (b)
+            motorTape.setPower(1);
+        else
+            motorTape.setPower(0.0);
+    }
+
+    public void retractTapeManual(boolean b) {
+        if (b)
+            motorTape.setPower(-1);
+        else
+            motorTape.setPower(0.0);
+    }
+
+    public void toggleHarvester(double power) {
+        if (motorHarvest.getPower() == 0.0)
+            motorHarvest.setPower(power);
+        else
+            motorHarvest.setPower(0.0);
+    }
+
+    public void reverseHarvester() {
+        motorHarvest.setDirection(DcMotor.Direction.REVERSE);
+    }
+
+    //return robot to initialization position
+    public void initPositionSet() {
+        //sets harvester and drive power to 0
+        motorHarvest.setPower(0);
+        setLeftDrivePower(0);
+        setRightDrivePower(0);
+
+        //sets the target position for arm, slide, and tape to the init positions
+        setPosMotor(motorArm, runningCancelAllArm, 1, startPosArm);
+        setPosMotor(motorTape, runningCancelAllTape, 1, startPosTape);
+        setPosMotor(motorSlide, runningCancelAllSlide, 1, startPosSlide);
+    }
+
+    //runs until the motors hit the initialization position
+    public void initPositionRun() {
+        if (runningCancelAllArm.getValue() || runningCancelAllSlide.getValue() || runningCancelAllTape.getValue()) {
+            runToPos(motorArm, 50, runningCancelAllArm, null);
+            runToPos(motorArm, 50, runningCancelAllTape, null);
+            runToPos(motorSlide, 50, runningCancelAllTape, null);
+        }
+    }
+
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                            //
@@ -332,41 +317,42 @@ public class TeleOpV1 extends SynchronousOpMode
     //                                                                                            //
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
+    public void setPosMotor(DcMotor motor, ModifiedBoolean isRunning, int ticksInInch, double distance) {
+        isRunning.toggle();
+        if (!isRunning.getValue()) {
+            motor.setPower(0);
+        } else
+            motor.setTargetPosition((int) (motor.getCurrentPosition() + ticksInInch * distance));
+    }
+
+
+    public void runToPos(DcMotor motor, double minPower, ModifiedBoolean isRunning, ModifiedBoolean runNext) {
+        if (isRunning.getValue()) {
+            if (motor.getCurrentPosition() - 10 < motor.getTargetPosition() && motor.getCurrentPosition() < motor.getTargetPosition() + 10) {
+                motor.setPower(0);
+                isRunning.setFalse();
+                if (runNext != null)
+                    runNext.setTrue();
+            } else
+                setCurvedPower(motor, ARBITRARYDOUBLE, 1, minPower);
+        }
+    }
+
     public void setLeftDrivePower(double power) {
-        motorLeftFore.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
-        motorLeftAft.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
         motorLeftFore.setPower(power);
         motorLeftAft.setPower(power);
     }
 
-    public void setRightDrivePower(double power){
-        motorRightAft.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
-        motorRightFore.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
+    public void setRightDrivePower(double power) {
         motorRightFore.setPower(power);
         motorRightAft.setPower(power);
     }
 
 
-    //thresh: distance from target at which motor slows
-
-    /* THIS METHOD DOES NOT WORK - Cannot run other operations while this is running due to entering while loop and not exiting
-    private void moveToPosTicks(int ticks, DcMotor motor, double thresh) {
-
-        motor.setTargetPosition(motor.getCurrentPosition() + ticks);
-
-        motor.setMode(DcMotorController.RunMode.RUN_USING_ENCODERS);
-        if (motor.getCurrentPosition() > motor.getTargetPosition())
-            while (motor.getCurrentPosition() > motor.getTargetPosition())
-                setCurvedPower(motor, thresh, 100, 60); // ^ THESE ARE ARBITRARY NUMBERS THAT WE WILL REFINE THROUGH TESTING. They Are supposed to be the range in which the motors can stop giving power
-        else
-            while (motor.getCurrentPosition() < motor.getTargetPosition())
-                setCurvedPower(motor, thresh, 100, 60);
-        motor.setPower(0);
-    }
-    */
+    //QUADRATIC POWER SLOPE
 
     //thresh: distance from target at which motor slows
-    public void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) {
+    /*public void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) {
         int target = motor.getTargetPosition();
         if(target - motor.getCurrentPosition() > thresh)
             motor.setPower(inputPower);
@@ -376,12 +362,24 @@ public class TeleOpV1 extends SynchronousOpMode
             motor.setPower(power);
         }
     }
+    */
+
+    public void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) {
+        int target = motor.getTargetPosition();
+        if (target - motor.getCurrentPosition() > thresh)
+            motor.setPower(inputPower);
+        else {
+            double overThr = motor.getCurrentPosition() - target + thresh;
+            double power = (inputPower - minPower) / (1 + Math.pow(Math.E, Math.pow(overThr / thresh - .5, -4) * 12)) + minPower;
+            motor.setPower(power);
+        }
+    }
 
     //Default Scale Input Method created by FTC- We will use this one until someone creates a better one.
     //Used for scaling joysticks, basically is a floor function that is squared
-    double scaleInput(double dVal)  {
-        double[] scaleArray = { 0.0, 0.05, 0.09, 0.10, 0.12, 0.15, 0.18, 0.24,
-                0.30, 0.36, 0.43, 0.50, 0.60, 0.72, 0.85, 1.00, 1.00 };
+    double scaleInput(double dVal) {
+        double[] scaleArray = {0.0, 0.05, 0.09, 0.10, 0.12, 0.15, 0.18, 0.24,
+                0.30, 0.36, 0.43, 0.50, 0.60, 0.72, 0.85, 1.00, 1.00};
 
         // get the corresponding index for the scaleInput array.
         int index = (int) (dVal * 16.0);
@@ -400,46 +398,54 @@ public class TeleOpV1 extends SynchronousOpMode
         return dScale;
     }
 
-    public void testContMotor(){
+    public void testContMotor() {
         if (motorSlide.getCurrentPosition() < motorSlide.getTargetPosition()) {
-            setCurvedPower(motorSlide, 200, 100, 60);
-        }
-        else {
+            setCurvedPower(motorSlide, 1000, 1, 0.3);
+        } else {
             motorSlide.setPower(0);
-            testRunning = false;
+            testRunning.setFalse();
         }
     }
 
-    public void testContMotor2(int ticks){
-        motorSlide.setTargetPosition(ticks + motorSlide.getCurrentPosition());
-        motorSlide.setMode(DcMotorController.RunMode.RUN_TO_POSITION);
-    }
-
-    public void retractSlide(String height){ //Can be either top mid or bot
+    public void retractSlide(String height) { //Can be either top mid or bot
 
     }
 
-    public void score(String height){  // can be either top mid or bot
+    public void score(String height) {  // can be either top mid or bot
 
     }
 
-    public void toggleHarvester(double power){
+    public void loadDispenser() {
 
     }
 
-    public void loadDispenser(){
+
+    //stop all motors
+    public void cancelAll() {
+        motorArm.setPower(0);
+        motorHarvest.setPower(0);
+        motorTape.setPower(0);
+        motorSlide.setPower(0);
+        setLeftDrivePower(0);
+        setRightDrivePower(0);
+    }
+
+
+    public void dumpDispenser() {
 
     }
 
-    public void cancelAll(){
+    public void extendSlide(String height) { //Can be either top mid or bot
+        if (height.equals("top")) {
 
+        }
+
+        if (height.equals("mid")) {
+        }
+
+        if (height.equals("bot")) {
+
+        }
     }
 
-    public void dumpDispenser(){
-
-    }
-
-    public void extendSlide(String height){ //Can be either top mid or bot
-
-    }
 }
