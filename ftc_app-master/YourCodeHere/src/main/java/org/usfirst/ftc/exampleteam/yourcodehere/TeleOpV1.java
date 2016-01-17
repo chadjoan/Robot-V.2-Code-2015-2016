@@ -19,6 +19,7 @@ public class TeleOpV1 extends SynchronousOpMode {
     private ModifiedBoolean runningCancelAllArm = new ModifiedBoolean(false);
     private ModifiedBoolean runningCancelAllTape = new ModifiedBoolean(false);
     private ModifiedBoolean runningCancelAllSlide = new ModifiedBoolean(false);
+    private ModifiedBoolean runningExtendSlide = new ModifiedBoolean(false);
 
 
     // defaults to blue alliance
@@ -48,6 +49,11 @@ public class TeleOpV1 extends SynchronousOpMode {
     private final int TICKS_IN_INCH_TAPE = ARBITRARYINT;
     private final int TICKS_IN_DEGREE_ARM = ARBITRARYINT;
     private final int TICKS_IN_INCH_SLIDE = ARBITRARYINT;
+    private final double DISTANCE_TO_TOP = ARBITRARYDOUBLE;
+    private final double DISTANCE_TO_MID = ARBITRARYDOUBLE;
+    private final double DISTANCE_TO_BOT = ARBITRARYDOUBLE;
+
+
     // Declare drive motors
     DcMotor motorLeftFore;
     DcMotor motorLeftAft;
@@ -112,14 +118,12 @@ public class TeleOpV1 extends SynchronousOpMode {
                     }
                 }
 
-
-
                 //MANUAL CONTROLS//
                 extendTapeManual(NEEDS_BUTTON_MAPPED);
                 retractTapeManual(NEEDS_BUTTON_MAPPED);
 
                 //starts and stops harvester
-                if(NEEDS_BUTTON_MAPPED)
+                if (NEEDS_BUTTON_MAPPED)
                     toggleHarvester(1);
 
                 //toggles harvester spin direction
@@ -131,24 +135,33 @@ public class TeleOpV1 extends SynchronousOpMode {
                 setLeftDrivePower(scaleInput(gamepad1.left_stick_y));
                 setRightDrivePower(scaleInput(gamepad1.right_stick_y));
 
-
-                if (NEEDS_BUTTON_MAPPED)
-                    initPositionSet();
-
                 if (NEEDS_BUTTON_MAPPED)
                     triggerZipline();
 
+                if (NEEDS_BUTTON_MAPPED)
+                    cancelAll();
             }
 
-            initPositionRun();
 
-            //Run tape motor till it reaches hang distance
-            runToPos(motorTape, ARBITRARYDOUBLE, runningExtendTapeAuto, null);
             if (testRunning.getValue()) {
                 testContMotor();
             }
             idle();
         }
+    }
+
+    /**
+     * put all autonomous functions in here, to be run after code finishes reading gamepad
+     * this method runs approx every 35 ms
+     * this section is for setting the motor power for all of the automatic
+     * methods that we call in the gamepad section
+     */
+    public void runAllAutoMethods() {
+        //Run tape motor till it reaches hang distance
+        runToPos(motorTape, ARBITRARYDOUBLE, runningExtendTapeAuto, null);
+
+        //Runs slide, arm, and tape motors until they reach their starting initialization position
+        initPositionRun();
     }
 
     //Initialize and Map All Hardware
@@ -310,6 +323,19 @@ public class TeleOpV1 extends SynchronousOpMode {
         }
     }
 
+    //stop all motors
+    public void cancelAll() {
+        motorArm.setPower(0);
+        motorHarvest.setPower(0);
+        motorTape.setPower(0);
+        motorSlide.setPower(0);
+        setLeftDrivePower(0);
+        setRightDrivePower(0);
+        /**
+         * ADD CODE HERE THAT SETS ALL MODIFIEDBOOLEANS EQUAL TO FALSE WHEN EVERYTHING ELSE IS DONE
+         */
+    }
+
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     //                                                                                            //
@@ -322,7 +348,7 @@ public class TeleOpV1 extends SynchronousOpMode {
         if (!isRunning.getValue()) {
             motor.setPower(0);
         } else
-            motor.setTargetPosition((int) (motor.getCurrentPosition() + ticksInInch * distance));
+            motor.setTargetPosition((int) (motor.getCurrentPosition() + (ticksInInch * distance)));
     }
 
 
@@ -407,10 +433,6 @@ public class TeleOpV1 extends SynchronousOpMode {
         }
     }
 
-    public void retractSlide(String height) { //Can be either top mid or bot
-
-    }
-
     public void score(String height) {  // can be either top mid or bot
 
     }
@@ -420,32 +442,28 @@ public class TeleOpV1 extends SynchronousOpMode {
     }
 
 
-    //stop all motors
-    public void cancelAll() {
-        motorArm.setPower(0);
-        motorHarvest.setPower(0);
-        motorTape.setPower(0);
-        motorSlide.setPower(0);
-        setLeftDrivePower(0);
-        setRightDrivePower(0);
-    }
-
-
     public void dumpDispenser() {
 
     }
 
-    public void extendSlide(String height) { //Can be either top mid or bot
+    //returns and telemetry updates are for testing purposes
+    public void extendSlideSet(String height) { //Can be either top mid or bot
         if (height.equals("top")) {
-
+            setPosMotor(motorSlide, runningExtendSlide, TICKS_IN_INCH_SLIDE, DISTANCE_TO_TOP);
+            return;
         }
 
         if (height.equals("mid")) {
+            setPosMotor(motorSlide, runningExtendSlide, TICKS_IN_INCH_SLIDE, DISTANCE_TO_MID);
+            return;
         }
 
         if (height.equals("bot")) {
-
+            setPosMotor(motorSlide, runningExtendSlide, TICKS_IN_INCH_SLIDE, DISTANCE_TO_BOT);
+            return;
         }
-    }
 
+        telemetry.addData("NOT A VALID HEIGHT FOR SLIDES", "FIX CODE");
+        telemetry.update();
+    }
 }
