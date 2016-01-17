@@ -21,6 +21,8 @@ public class TeleOpV1 extends SynchronousOpMode {
     private ModifiedBoolean runningCancelAllSlide = new ModifiedBoolean(false);
     private ModifiedBoolean runningExtendSlide = new ModifiedBoolean(false);
 
+    //Slides at rest is to keep track of if the slides are in the resting position or are currently engaged
+    private boolean slidesAtRest = true;
 
     // defaults to blue alliance
     private boolean isBlue = true;
@@ -63,11 +65,12 @@ public class TeleOpV1 extends SynchronousOpMode {
     // Declare drawer slide motor and servos
     // motor extends/retracts slides
     // servoSlide(continuous) slides the deposit box laterally
-    // servoBlockRelease(s) open flaps on the bottom of the bucket, releasing blocks/climbers
+    // servoConveyor runs the conveyor belt, dispensing blocks over the side
+    // servoLock is the servo for locking the tape measure in place once hanging.
     DcMotor motorSlide;
     Servo servoSlide;
-    Servo servoBlockReleaseLeft;
-    Servo servoBlockReleaseRight;
+    Servo servoConveyor;
+    Servo servoLock;
 
     // Declare tape measure motor and servo
     // motor extends/retracts tape
@@ -93,13 +96,11 @@ public class TeleOpV1 extends SynchronousOpMode {
         hardwareMapping();
 
         waitForStart();
-
         // Go go gadget robot!
         while (opModeIsActive()) {
             if (updateGamepads()) {
 
                 //AUTOMATIC CONTROLS//
-
                 if (gamepad1.x) {
                     telemetry.addData("Button Works!", "Test");
                     telemetry.update();
@@ -142,6 +143,7 @@ public class TeleOpV1 extends SynchronousOpMode {
                     cancelAll();
             }
 
+            runAllAutoMethods();
 
             if (testRunning.getValue()) {
                 testContMotor();
@@ -150,13 +152,27 @@ public class TeleOpV1 extends SynchronousOpMode {
         }
     }
 
+
+    private void manualMethods() {
+
+    }
+
+    /**
+     * put all autonomous setters in here, when the code updates the gamepad
+     * it should look at this section to see if we're starting any auto methods
+     * DO NOT PUT MANUAL METHODS- Separate Wrapper Method
+     */
+    private void setAllAutoMethods() {
+
+    }
+
     /**
      * put all autonomous functions in here, to be run after code finishes reading gamepad
      * this method runs approx every 35 ms
      * this section is for setting the motor power for all of the automatic
      * methods that we call in the gamepad section
      */
-    public void runAllAutoMethods() {
+    private void runAllAutoMethods() {
         //Run tape motor till it reaches hang distance
         runToPos(motorTape, ARBITRARYDOUBLE, runningExtendTapeAuto, null);
 
@@ -179,12 +195,12 @@ public class TeleOpV1 extends SynchronousOpMode {
         // Initialize drawer slide motor and servos
         motorSlide = hardwareMap.dcMotor.get("motorSlide");
         servoSlide = hardwareMap.servo.get("servoSlide");
-        servoBlockReleaseLeft = hardwareMap.servo.get("servoBlockReleaseLeft");
-        servoBlockReleaseRight = hardwareMap.servo.get("servoBlockReleaseRight");
+        servoConveyor = hardwareMap.servo.get("servoConveyor");
 
-        // Initialize tape measure motor and servo
+        // Initialize tape measure motor, servo tape, and servo lock.
         motorTape = hardwareMap.dcMotor.get("motorTape");
         servoTape = hardwareMap.servo.get("servoTape");
+        servoLock = hardwareMap.servo.get("servoLock");
 
         // Initialize motor that spins the harvester
         motorHarvest = hardwareMap.dcMotor.get("motorHarvest");
@@ -234,7 +250,7 @@ public class TeleOpV1 extends SynchronousOpMode {
     //                                                                                            //
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public void triggerZipline() {
+    private void triggerZipline() {
         if (isBlue) {
             if (atRestTriggers)
                 servoRightZip.setPosition(RIGHT_ZIP_UP); //Needs resting and active servo positions
@@ -249,24 +265,8 @@ public class TeleOpV1 extends SynchronousOpMode {
         atRestTriggers = !atRestTriggers;
     }
 
-/*    public void extendTapeAuto() throws InterruptedException {
-        if (motorTape.isBusy())
-            motorTape.setPower(0);
-        else {
-            //moveToPosTicks(DISTANCE_TO_HANG, motorTape, NEEDS_THRESH); //First arbitrary int is how many ticks we want the motor to extend, second arbitrary double is where we want the tape to start slowing down.
-            while (motorTape.isBusy())
-                this.idle();
-        }
-    }
-  */
-
-    //extends the tape measure until it reaches the correct position to hang from the regular hanging position.
-    public void extendTapeAuto() {
-        runToPos(motorTape, ARBITRARYDOUBLE, runningExtendTapeAuto, null);
-    }
-
     //retracts the tape until it reaches just a little above the starting position at the time of initialization
-    public void retractTapeAuto() throws InterruptedException {
+    private void retractTapeAuto() throws InterruptedException {
         if (motorTape.isBusy())
             motorTape.setPower(0);
         else {
@@ -276,33 +276,33 @@ public class TeleOpV1 extends SynchronousOpMode {
         }
     }
 
-    public void extendTapeManual(boolean b) {
+    private void extendTapeManual(boolean b) {
         if (b)
             motorTape.setPower(1);
         else
             motorTape.setPower(0.0);
     }
 
-    public void retractTapeManual(boolean b) {
+    private void retractTapeManual(boolean b) {
         if (b)
             motorTape.setPower(-1);
         else
             motorTape.setPower(0.0);
     }
 
-    public void toggleHarvester(double power) {
+    private void toggleHarvester(double power) {
         if (motorHarvest.getPower() == 0.0)
             motorHarvest.setPower(power);
         else
             motorHarvest.setPower(0.0);
     }
 
-    public void reverseHarvester() {
+    private void reverseHarvester() {
         motorHarvest.setDirection(DcMotor.Direction.REVERSE);
     }
 
     //return robot to initialization position
-    public void initPositionSet() {
+    private void initPositionSet() {
         //sets harvester and drive power to 0
         motorHarvest.setPower(0);
         setLeftDrivePower(0);
@@ -315,7 +315,7 @@ public class TeleOpV1 extends SynchronousOpMode {
     }
 
     //runs until the motors hit the initialization position
-    public void initPositionRun() {
+    private void initPositionRun() {
         if (runningCancelAllArm.getValue() || runningCancelAllSlide.getValue() || runningCancelAllTape.getValue()) {
             runToPos(motorArm, 50, runningCancelAllArm, null);
             runToPos(motorArm, 50, runningCancelAllTape, null);
@@ -324,7 +324,7 @@ public class TeleOpV1 extends SynchronousOpMode {
     }
 
     //stop all motors
-    public void cancelAll() {
+    private void cancelAll() {
         motorArm.setPower(0);
         motorHarvest.setPower(0);
         motorTape.setPower(0);
@@ -343,7 +343,7 @@ public class TeleOpV1 extends SynchronousOpMode {
     //                                                                                            //
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public void setPosMotor(DcMotor motor, ModifiedBoolean isRunning, int ticksInInch, double distance) {
+    private void setPosMotor(DcMotor motor, ModifiedBoolean isRunning, int ticksInInch, double distance) {
         isRunning.toggle();
         if (!isRunning.getValue()) {
             motor.setPower(0);
@@ -352,7 +352,7 @@ public class TeleOpV1 extends SynchronousOpMode {
     }
 
 
-    public void runToPos(DcMotor motor, double minPower, ModifiedBoolean isRunning, ModifiedBoolean runNext) {
+    private void runToPos(DcMotor motor, double minPower, ModifiedBoolean isRunning, ModifiedBoolean runNext) {
         if (isRunning.getValue()) {
             if (motor.getCurrentPosition() - 10 < motor.getTargetPosition() && motor.getCurrentPosition() < motor.getTargetPosition() + 10) {
                 motor.setPower(0);
@@ -364,12 +364,12 @@ public class TeleOpV1 extends SynchronousOpMode {
         }
     }
 
-    public void setLeftDrivePower(double power) {
+    private void setLeftDrivePower(double power) {
         motorLeftFore.setPower(power);
         motorLeftAft.setPower(power);
     }
 
-    public void setRightDrivePower(double power) {
+    private void setRightDrivePower(double power) {
         motorRightFore.setPower(power);
         motorRightAft.setPower(power);
     }
@@ -390,7 +390,7 @@ public class TeleOpV1 extends SynchronousOpMode {
     }
     */
 
-    public void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) {
+    private void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) {
         int target = motor.getTargetPosition();
         if (target - motor.getCurrentPosition() > thresh)
             motor.setPower(inputPower);
@@ -424,7 +424,7 @@ public class TeleOpV1 extends SynchronousOpMode {
         return dScale;
     }
 
-    public void testContMotor() {
+    private void testContMotor() {
         if (motorSlide.getCurrentPosition() < motorSlide.getTargetPosition()) {
             setCurvedPower(motorSlide, 1000, 1, 0.3);
         } else {
@@ -433,21 +433,43 @@ public class TeleOpV1 extends SynchronousOpMode {
         }
     }
 
-    public void score(String height) {  // can be either top mid or bot
+    private void scoreSet(String height, boolean button) {  // can be either top mid or bot
+        if (slidesAtRest) {
+            extendSlideSet(height);
+            slidesAtRest = false;
+        }
+        else {
+            if ()
+            //start the conveyor
+            servoConveyor.setPosition(ARBITRARYDOUBLE);
+        }
+
+        /**
+         * NEED TO WRITE METHOD THAT CAN SHUTTLE THE DISPENSER TO A SPECIFIC DISTANCE - most likely
+         * will be time based and refined through testing since continuous servos don't have
+         * encoders or positions
+         */
+        if (!runningExtendSlide.getValue() && button)
+    }
+
+    private void scoreRun() {
+        runToPos(motorSlide, ARBITRARYDOUBLE, runningExtendSlide, null);
+        /**
+         * NEED TO WRITE METHOD THAT CAN SHUTTLE THE DISPENSER TO SPECIFIC DISTANCE
+         */
+    }
+
+    private void loadDispenser() {
 
     }
 
-    public void loadDispenser() {
 
-    }
-
-
-    public void dumpDispenser() {
+    private void dumpDispenser() {
 
     }
 
     //returns and telemetry updates are for testing purposes
-    public void extendSlideSet(String height) { //Can be either top mid or bot
+    private void extendSlideSet(String height) { //Can be either top mid or bot
         if (height.equals("top")) {
             setPosMotor(motorSlide, runningExtendSlide, TICKS_IN_INCH_SLIDE, DISTANCE_TO_TOP);
             return;
@@ -466,4 +488,5 @@ public class TeleOpV1 extends SynchronousOpMode {
         telemetry.addData("NOT A VALID HEIGHT FOR SLIDES", "FIX CODE");
         telemetry.update();
     }
+
 }
