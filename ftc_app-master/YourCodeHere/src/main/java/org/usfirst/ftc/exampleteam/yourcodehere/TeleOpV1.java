@@ -20,9 +20,10 @@ public class TeleOpV1 extends SynchronousOpMode {
     private ModifiedBoolean runningCancelAllTape = new ModifiedBoolean(false);
     private ModifiedBoolean runningCancelAllSlide = new ModifiedBoolean(false);
     private ModifiedBoolean runningExtendSlide = new ModifiedBoolean(false);
+    private ModifiedBoolean runningRetractSlide = new ModifiedBoolean(false);
 
-    //Slides at rest is to keep track of if the slides are in the resting position or are currently engaged
-    private boolean slidesAtRest = true;
+    //shows what step score is on
+    private int scoreToggle = 0;
 
     // defaults to blue alliance
     private boolean isBlue = true;
@@ -54,6 +55,8 @@ public class TeleOpV1 extends SynchronousOpMode {
     private final double DISTANCE_TO_TOP = ARBITRARYDOUBLE;
     private final double DISTANCE_TO_MID = ARBITRARYDOUBLE;
     private final double DISTANCE_TO_BOT = ARBITRARYDOUBLE;
+    private final double LOCK_ENGAGED = ARBITRARYDOUBLE;
+    private final double LOCK_DISENGAGED = ARBITRARYDOUBLE;
 
 
     // Declare drive motors
@@ -101,15 +104,9 @@ public class TeleOpV1 extends SynchronousOpMode {
             if (updateGamepads()) {
 
                 //AUTOMATIC CONTROLS//
-                if (gamepad1.x) {
-                    telemetry.addData("Button Works!", "Test");
-                    telemetry.update();
-                }
 
-                if (NEEDS_BUTTON_MAPPED) {
-                    initPositionSet();
-                }
 
+                //TESTING PURPOSES
                 if (gamepad1.b) {
                     testRunning.toggle();
                     if (testRunning.getValue()) {
@@ -119,28 +116,9 @@ public class TeleOpV1 extends SynchronousOpMode {
                     }
                 }
 
-                //MANUAL CONTROLS//
-                extendTapeManual(NEEDS_BUTTON_MAPPED);
-                retractTapeManual(NEEDS_BUTTON_MAPPED);
+                //MANUAL CONTROLS
+                manualMethods();
 
-                //starts and stops harvester
-                if (NEEDS_BUTTON_MAPPED)
-                    toggleHarvester(1);
-
-                //toggles harvester spin direction
-                if (NEEDS_BUTTON_MAPPED)
-                    reverseHarvester();
-
-
-                //Read Joystick Data and Update Speed of Left and Right Motors
-                setLeftDrivePower(scaleInput(gamepad1.left_stick_y));
-                setRightDrivePower(scaleInput(gamepad1.right_stick_y));
-
-                if (NEEDS_BUTTON_MAPPED)
-                    triggerZipline();
-
-                if (NEEDS_BUTTON_MAPPED)
-                    cancelAll();
             }
 
             runAllAutoMethods();
@@ -154,6 +132,52 @@ public class TeleOpV1 extends SynchronousOpMode {
 
 
     private void manualMethods() {
+        //Toggle Team (if we need to score on an opponent's ramp)
+        if ((gamepad1.back && gamepad1.b) || (gamepad2.back && gamepad2.b))
+            isBlue = false;
+        if ((gamepad1.back && gamepad1.x) || (gamepad2.back && gamepad2.x))
+            isBlue = true;
+
+            extendTapeManual(gamepad2.dpad_up);
+        retractTapeManual(gamepad2.dpad_down);
+
+        //starts and stops harvester
+        if (gamepad1.left_trigger > .8)
+            toggleHarvester(1);
+
+        //toggles harvester spin direction
+        if (gamepad1.left_bumper)
+            reverseHarvester();
+
+        //Read Joystick Data and Update Speed of Left and Right Motors
+        //If joystick buttons are pressed, sets drive power to preset value
+        manualDriveControls();
+
+        if (gamepad2.x)
+            triggerZipline();
+
+        if ((gamepad1.back && gamepad1.start) || (gamepad2.back && gamepad2.start))
+            cancelAll();
+
+        //Stops any auto methods using slides and manually controls power with joysticks
+       if (gamepad2.left_stick_y < -.2 || gamepad2.left_stick_y > .2) {
+           motorSlide.setPower(scaleInput(gamepad2.left_stick_y));
+           runningExtendSlide.setFalse();
+           runningRetractSlide.setFalse();
+       }
+
+        if (gamepad2.left_bumper) {
+            servoSlide.setPosition(ARBITRARYDOUBLE);
+        }
+        if (gamepad2.right_bumper) {
+            servoSlide.setPosition(-ARBITRARYDOUBLE);
+        }
+
+        //manually adjust the conveyors
+        if (gamepad2.right_trigger > .2)
+            servoConveyor.setPosition(gamepad2.right_trigger);
+        if (gamepad2.left_trigger > .2)
+            servoConveyor.setPosition(gamepad2.left_trigger);
 
     }
 
@@ -163,6 +187,20 @@ public class TeleOpV1 extends SynchronousOpMode {
      * DO NOT PUT MANUAL METHODS- Separate Wrapper Method
      */
     private void setAllAutoMethods() {
+        if (gamepad1.x) {
+            telemetry.addData("Button Works!", "Test");
+            telemetry.update();
+        }
+
+        /**
+         * Scoring methods
+         * First button press extends slides and shuttle
+         * Second button press starts conveyor
+         * Third button press stops conveyor, and restores slides and shuttle to default positions
+         */
+        scoreSet("bot", gamepad2.a);
+        scoreSet("mid", gamepad2.b);
+        scoreSet("top", gamepad2.y);
 
     }
 
@@ -175,9 +213,6 @@ public class TeleOpV1 extends SynchronousOpMode {
     private void runAllAutoMethods() {
         //Run tape motor till it reaches hang distance
         runToPos(motorTape, ARBITRARYDOUBLE, runningExtendTapeAuto, null);
-
-        //Runs slide, arm, and tape motors until they reach their starting initialization position
-        initPositionRun();
     }
 
     //Initialize and Map All Hardware
@@ -277,17 +312,30 @@ public class TeleOpV1 extends SynchronousOpMode {
     }
 
     private void extendTapeManual(boolean b) {
-        if (b)
-            motorTape.setPower(1);
-        else
+        if (b) {
+            if (servoLock.getPosition() != LOCK_DISENGAGED) {
+                servoLock.setPosition(LOCK_DISENGAGED);
+            } else
+                motorTape.setPower(1);
+        } else {
+            if (servoTape.getPosition() != LOCK_ENGAGED)
+                servoLock.setPosition(LOCK_ENGAGED);
             motorTape.setPower(0.0);
+        }
     }
 
     private void retractTapeManual(boolean b) {
-        if (b)
-            motorTape.setPower(-1);
-        else
+        if (b) {
+            if (servoLock.getPosition() != LOCK_DISENGAGED) {
+                servoLock.setPosition(LOCK_DISENGAGED);
+            } else {
+                motorTape.setPower(-1);
+            }
+        } else {
+            if (servoTape.getPosition() != LOCK_ENGAGED)
+                servoLock.setPosition(LOCK_ENGAGED);
             motorTape.setPower(0.0);
+        }
     }
 
     private void toggleHarvester(double power) {
@@ -374,22 +422,6 @@ public class TeleOpV1 extends SynchronousOpMode {
         motorRightAft.setPower(power);
     }
 
-
-    //QUADRATIC POWER SLOPE
-
-    //thresh: distance from target at which motor slows
-    /*public void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) {
-        int target = motor.getTargetPosition();
-        if(target - motor.getCurrentPosition() > thresh)
-            motor.setPower(inputPower);
-        else {
-            double overThr = motor.getCurrentPosition() - target + thresh;
-            double power = inputPower-overThr*overThr/thresh/thresh*(inputPower - minPower);
-            motor.setPower(power);
-        }
-    }
-    */
-
     private void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) {
         int target = motor.getTargetPosition();
         if (target - motor.getCurrentPosition() > thresh)
@@ -433,33 +465,61 @@ public class TeleOpV1 extends SynchronousOpMode {
         }
     }
 
+    //This method is a combination of autonomous and manual controls
+    //Certain actions such as the conveyor run on button prompts while
+    //Other automated actions such as shuttling run on their own
     private void scoreSet(String height, boolean button) {  // can be either top mid or bot
-        if (slidesAtRest) {
+        if (scoreToggle == 0) {
+            //extend slides to specified height
             extendSlideSet(height);
-            slidesAtRest = false;
-        }
-        else {
-            if ()
-            //start the conveyor
-            servoConveyor.setPosition(ARBITRARYDOUBLE);
+            shuttleDispenserSet(true); //NEED TO WRITE METHOD AFTER FIGURING OUT WHAT WE'RE DOING TOUCH SENSOR? TIME?
+            scoreToggle++;
+            return;
         }
 
+        if (scoreToggle == 1) {
+            //start the conveyor
+            servoConveyor.setPosition(ARBITRARYDOUBLE);
+            scoreToggle++;
+            return;
+        }
+        if (scoreToggle == 2) {
+            //stop conveyor and return to retracted position
+            servoConveyor.setPosition(ARBITRARYDOUBLE);
+            shuttleDispenserSet(false); //NEED TO WRITE METHOD AFTER FIGURING OUT WHAT WE'RE DOING TOUCH SENSOR? TIME?
+            setPosMotor(motorSlide, runningRetractSlide, 1, startPosSlide);
+            scoreToggle = 0;
+        }
         /**
          * NEED TO WRITE METHOD THAT CAN SHUTTLE THE DISPENSER TO A SPECIFIC DISTANCE - most likely
          * will be time based and refined through testing since continuous servos don't have
          * encoders or positions
          */
-        if (!runningExtendSlide.getValue() && button)
     }
 
     private void scoreRun() {
+        //Extends Tape Measure
         runToPos(motorSlide, ARBITRARYDOUBLE, runningExtendSlide, null);
-        /**
-         * NEED TO WRITE METHOD THAT CAN SHUTTLE THE DISPENSER TO SPECIFIC DISTANCE
-         */
+        shuttleDispenserRun();
+        //NEED TO WRITE METHOD THAT CAN SHUTTLE THE DISPENSER TO SPECIFIC DISTANCE
+        runToPos(motorSlide, ARBITRARYDOUBLE, runningRetractSlide, null);
     }
 
-    private void loadDispenser() {
+    /**
+     * WRITE METHOD
+     */
+    private void shuttleDispenserRun() {
+
+    }
+
+    /**
+     * WRITE METHOD
+     */
+    private void shuttleDispenserSet(boolean toGoal) {
+
+    }
+
+    private void loadDispenserSet() {
 
     }
 
@@ -487,6 +547,26 @@ public class TeleOpV1 extends SynchronousOpMode {
 
         telemetry.addData("NOT A VALID HEIGHT FOR SLIDES", "FIX CODE");
         telemetry.update();
+    }
+
+    private void manualDriveControls() {
+
+        if (gamepad1.left_stick_button) {
+            if (gamepad1.left_stick_y > 0)
+                setLeftDrivePower(ARBITRARYDOUBLE);
+            else
+                setLeftDrivePower(-ARBITRARYDOUBLE);
+        } else
+            setLeftDrivePower(scaleInput(gamepad1.left_stick_y));
+
+        if (gamepad1.right_stick_button) {
+            if (gamepad1.right_stick_y > 0)
+                setRightDrivePower(ARBITRARYDOUBLE);
+            else
+                setRightDrivePower(-ARBITRARYDOUBLE);
+        } else
+            setRightDrivePower(scaleInput(gamepad1.right_stick_y));
+
     }
 
 }
