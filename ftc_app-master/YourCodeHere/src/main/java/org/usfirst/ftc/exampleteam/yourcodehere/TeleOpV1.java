@@ -56,15 +56,19 @@ public class TeleOpV1 extends SynchronousOpMode {
     //farthest slide can extend without damage
     private int maxSlideLength;
 
-    private final double RIGHT_ZIP_UP = ARBITRARYDOUBLE;
-    private final double RIGHT_ZIP_DOWN = ARBITRARYDOUBLE;
-    private final double LEFT_ZIP_UP = ARBITRARYDOUBLE;
-    private final double LEFT_ZIP_DOWN = ARBITRARYDOUBLE;
+    //sees if this is the first time pressing the button
+    private boolean firstPressedDPad = true;
+    private boolean firstPressedLeftTrigger = true;
+
+    private final double RIGHT_ZIP_UP = 1; //ARBITRARY
+    private final double RIGHT_ZIP_DOWN = 0; //ARBITRARY
+    private final double LEFT_ZIP_UP = 1; //ARBITRARY
+    private final double LEFT_ZIP_DOWN = 0; //ARBITRARY
     private final int TICKS_IN_DEGREE_ARM = ARBITRARYINT;
-    private final int TICKS_IN_INCH_SLIDE = ARBITRARYINT;
-    private final double LOCK_ENGAGED = ARBITRARYDOUBLE;
-    private final double LOCK_DISENGAGED = ARBITRARYDOUBLE;
-    private final double CONSTANT_DRIVE_SPEED = ARBITRARYDOUBLE;
+    private final int TICKS_IN_INCH_SLIDE = 1200; //ARBITRARY
+    private final double LOCK_ENGAGED = 1; //ARBITRARY
+    private final double LOCK_DISENGAGED = 0; //ARBITRARY
+    private final double CONSTANT_DRIVE_SPEED = 1; //TESTING PURPOSES
 
 
     // Declare drive motors
@@ -102,16 +106,17 @@ public class TeleOpV1 extends SynchronousOpMode {
     // Declare sensors
     GyroSensor gyro;
 
-    // Touch Sensors (Not sure if we're using these yet)
-    TouchSensor touchLeftPos;
-    TouchSensor touchRightPos;
-    TouchSensor touchNeutralPos;
+    //Declare color sensors and enalbe led
+    ColorSensor colorLeft;
+    //ColorSensor colorRight;
+
 
     @Override
     public void main() throws InterruptedException {
         hardwareMapping();
 
         waitForStart();
+
         // Go go gadget robot!
         while (opModeIsActive()) {
 
@@ -145,6 +150,7 @@ public class TeleOpV1 extends SynchronousOpMode {
             if (testRunning.getValue()) {
                 testContMotor();
             }
+
             idle();
         }
     }
@@ -158,21 +164,32 @@ public class TeleOpV1 extends SynchronousOpMode {
     private void sensorChanges() {
 
         //stops the slide and updates position when reaches desired position
-        slideAutoStop();
+        //slideAutoStop();
 
+        /** THIS IS A TEST METHOD FOR THE COLOR SENSOR
+         if (colorLeft.blue() + colorLeft.red() + colorLeft.green() > 50)
+         motorHarvest.setPower(0);
+         else
+         motorHarvest.setPower(1);
+         */
     }
 
     private void manualMethods() {
         //Toggle Team (if we need to score on an opponent's ramp)
-        if ((gamepad1.back && gamepad1.b) || (gamepad2.back && gamepad2.b))
+        if ((gamepad1.back && gamepad1.b) || (gamepad2.back && gamepad2.b)) {
             isBlue = false;
-        if ((gamepad1.back && gamepad1.x) || (gamepad2.back && gamepad2.x))
+        }
+        if ((gamepad1.back && gamepad1.x) || (gamepad2.back && gamepad2.x)) {
             isBlue = true;
+        }
 
 
         //starts and stops harvester
-        if (gamepad1.left_trigger > .8)
+        if (gamepad1.left_trigger > .8 && firstPressedLeftTrigger) {
             toggleHarvester(1);
+            firstPressedLeftTrigger = false;
+        } else
+            firstPressedLeftTrigger = true;
 
         //toggles harvester spin direction
         if (gamepad1.left_bumper)
@@ -205,7 +222,8 @@ public class TeleOpV1 extends SynchronousOpMode {
             }
             runningExtendSlide.setFalse();
             runningRetractSlide.setFalse();
-        }
+        } else if (!runningExtendSlide.getValue() && !runningRetractSlide.getValue())
+            motorSlide.setPower(0);
 
 
         //adjust the slide servos manually
@@ -229,28 +247,9 @@ public class TeleOpV1 extends SynchronousOpMode {
                 servoConveyor.setPosition(.5);
         }
 
+        //adjust angle of tape
+        servoTape.setPosition(scaleInput(gamepad2.right_stick_y / 2 + .5));
 
-        //Controls for motorTape - Also automatically sets the tapeLock after a specified amount of time
-        if (gamepad2.dpad_up || gamepad2.dpad_down) {
-            // if it's the first time you loop after holding down the button.
-            if (!motorTape.isBusy()) {
-                tapeStartTime = System.currentTimeMillis();
-            }
-            if (System.currentTimeMillis() - tapeStartTime > ARBITRARYINT) {    /*Test for THRESH, the time which it takes for the lock to unlock */
-                if (gamepad2.dpad_up) {
-                    if (motorTape.getCurrentPosition() < maxTapeLength)
-                        motorTape.setPower(1); //MAY BE 1 OR 0 NEEDS TESTING
-                } else {
-                    if (motorTape.getCurrentPosition() > startPosTape) //COULD BE GREATER OR LESS DEPENDING ON TESTING THIS IS SO YOU DON'T RETRACT TOO FAR
-                        motorTape.setPower(-1); //MAY BE 1 OR -1 NEEDS TESTING
-                }
-            } else {
-                servoLock.setPosition(LOCK_DISENGAGED);
-            }
-        } else {
-            motorTape.setPower(0.0);
-            servoLock.setPosition(LOCK_ENGAGED);
-        }
 
     }
 
@@ -260,10 +259,6 @@ public class TeleOpV1 extends SynchronousOpMode {
      * DO NOT PUT MANUAL METHODS- Separate Wrapper Method
      */
     private void setAllAutoMethods() {
-        if (gamepad1.x) {
-            telemetry.addData("Button Works!", "Test");
-            telemetry.update();
-        }
 
         /**
          * Scoring methods
@@ -272,7 +267,7 @@ public class TeleOpV1 extends SynchronousOpMode {
          * Third button press stops conveyor, and restores slides and shuttle to default positions
          */
         scoreSet(Height.BOT, gamepad2.a);
-        scoreSet(Height.MID, gamepad2.b);
+        scoreSet(Height.MID, gamepad2.b && !gamepad2.back);
         scoreSet(Height.TOP, gamepad2.y);
 
     }
@@ -285,6 +280,32 @@ public class TeleOpV1 extends SynchronousOpMode {
      */
     private void runAllAutoMethods() {
         scoreRun();
+
+        //Controls for motorTape - Also automatically sets the tapeLock after a specified amount of time
+        if (gamepad2.dpad_up || gamepad2.dpad_down) {
+            // if it's the first time you loop after holding down the button.
+            if ((motorTape.getPower() == 0) && !firstPressedDPad) {
+                tapeStartTime = System.currentTimeMillis();
+                firstPressedDPad = true;
+            }
+            if ((System.currentTimeMillis() - tapeStartTime) > 500) {    /*Test for THRESH, the time which it takes for the lock to unlock  ARBITRARY*/
+                if (gamepad2.dpad_up) {
+                    //if (motorTape.getCurrentPosition()) //< maxTapeLength) UNCOMMENT ON FINAL ARBITRARY
+                    motorTape.setPower(1); //MAY BE 1 OR 0 NEEDS TESTING
+                } else {
+                    //if (motorTape.getCurrentPosition()) //UNCOMMENT ON FINAL ARBITRARY  > startPosTape) //COULD BE GREATER OR LESS DEPENDING ON TESTING THIS IS SO YOU DON'T RETRACT TOO FAR
+                    motorTape.setPower(-1); //MAY BE 1 OR -1 NEEDS TESTING
+                }
+            } else {
+                //motorTape.setPower(ARBITRARYDOUBLE) //REVERSE THE MOTOR BEFORE DISENGAGING THE LOCK TO PREVENT GETTING STUCK
+                servoLock.setPosition(LOCK_DISENGAGED);
+            }
+        } else {
+            motorTape.setPower(0.0);
+            servoLock.setPosition(LOCK_ENGAGED);
+            firstPressedDPad = false;
+        }
+
     }
 
     //Initialize and Map All Hardware
@@ -321,12 +342,16 @@ public class TeleOpV1 extends SynchronousOpMode {
 
         // Initialize sensors
 
+        //Initialize color sensor and turn on led
+        colorLeft = hardwareMap.colorSensor.get("colorLeft");
+        colorLeft.enableLed(true);
+
         //Initialize gyro
         gyro = hardwareMap.gyroSensor.get("gyro");
         //Initialize touch sensors
-        touchLeftPos = hardwareMap.touchSensor.get("touchLeftPos");
-        touchRightPos = hardwareMap.touchSensor.get("touchRightPos");
-        touchNeutralPos = hardwareMap.touchSensor.get("touchNeutralPos");
+        //touchLeftPos = hardwareMap.touchSensor.get("touchLeftPos");
+        //touchRightPos = hardwareMap.touchSensor.get("touchRightPos");
+        //touchNeutralPos = hardwareMap.touchSensor.get("touchNeutralPos");
 
         gyro.calibrate();
 
@@ -356,13 +381,13 @@ public class TeleOpV1 extends SynchronousOpMode {
         startPosTape = motorSlide.getCurrentPosition();
 
         //Score heights for slides
-        botPosition = startPosTape + ARBITRARYINT;
-        midPosition = startPosTape + ARBITRARYINT;
-        topPosition = startPosTape + ARBITRARYINT;
-        maxSlideLength = startPosTape + ARBITRARYINT;
+        botPosition = startPosTape + 3000; //ARBITRARY
+        midPosition = startPosTape + 6000; //ARBITRARY
+        topPosition = startPosTape + 9000; //ARBITRARY
+        maxSlideLength = startPosTape + 12000;
 
         //keep track of max length tape should extend
-        maxTapeLength = motorTape.getCurrentPosition() + ARBITRARYINT;
+        maxTapeLength = motorTape.getCurrentPosition() + 6000; //ARBITRARY
 
         //initializes to neutral because that's where the starting position is
         slidePosition = SlidePosition.NEUTRAL;
@@ -398,7 +423,7 @@ public class TeleOpV1 extends SynchronousOpMode {
     }
 
     private void reverseHarvester() {
-        motorHarvest.setDirection(DcMotor.Direction.REVERSE);
+        motorHarvest.setPower(-motorHarvest.getPower());
     }
 
     /**
@@ -468,7 +493,7 @@ public class TeleOpV1 extends SynchronousOpMode {
                 if (runNext != null)
                     runNext.setTrue();
             } else
-                setCurvedPower(motor, ARBITRARYDOUBLE, 1, minPower);
+                setCurvedPower(motor, 30, 1, minPower); //ARBITRARY (30)
         }
     }
 
@@ -572,19 +597,19 @@ public class TeleOpV1 extends SynchronousOpMode {
     }
 
     private void scoreRun() {
-        runToPos(motorSlide, ARBITRARYDOUBLE, runningExtendSlide, null);
-        runToPos(motorSlide, ARBITRARYDOUBLE, runningRetractSlide, null);
+        runToPos(motorSlide, 30, runningExtendSlide, null); //ARBITRARY
+        runToPos(motorSlide, 30, runningRetractSlide, null); //ARBITRARY
     }
 
     private void loadDispenserSet() {
 
     }
 
-    private void dumpDispenser() {
+    private void loadDispenserRun() {
 
     }
 
-    //returns and telemetry updates are for testing purposes
+    //returns and updates are for testing purposes
     private void extendSlideSet(Height height) { //Can be either top mid or bot
         if (height == Height.TOP) {
             setPosMotor(motorSlide, runningExtendSlide, TICKS_IN_INCH_SLIDE, topPosition);
@@ -607,7 +632,7 @@ public class TeleOpV1 extends SynchronousOpMode {
 
     private void manualDriveControls() {
 
-        if (gamepad1.left_stick_button) {
+        if (gamepad1.right_trigger > .7 && (gamepad1.right_stick_y > .2 || gamepad1.right_stick_y < -.2)) {
             if (gamepad1.left_stick_y > 0)
                 setLeftDrivePower(CONSTANT_DRIVE_SPEED);
             else
@@ -615,7 +640,7 @@ public class TeleOpV1 extends SynchronousOpMode {
         } else
             setLeftDrivePower(scaleInput(gamepad1.left_stick_y));
 
-        if (gamepad1.right_stick_button) {
+        if (gamepad1.right_trigger > .7 && (gamepad1.right_stick_y > .2 || gamepad1.right_stick_y < -.2)) {
             if (gamepad1.right_stick_y > 0)
                 setRightDrivePower(CONSTANT_DRIVE_SPEED);
             else
@@ -655,23 +680,25 @@ public class TeleOpV1 extends SynchronousOpMode {
      * off the power. This code runs every main loop in the sensorUpdates method
      */
 
-    private void slideAutoStop() {
-        if (slidePosition == SlidePosition.NEUTRAL) {
-            if (touchLeftPos.isPressed()) {
-                motorSlide.setPower(.5);
-                slidePosition = SlidePosition.LEFT;
-            }
+    /**
+     private void slideAutoStop() {
+         if (slidePosition == SlidePosition.NEUTRAL) {
+             if ((colorLeft.red() + colorLeft.green()+ colorLeft.blue()) > ARBITRARYDOUBLE) {
+                 motorSlide.setPower(.5);
+                 slidePosition = SlidePosition.LEFT;
+             }
 
-            if (touchRightPos.isPressed()) {
-                motorSlide.setPower(.5);
-                slidePosition = SlidePosition.RIGHT;
-            }
+             if (touchRightPos.isPressed()) {
+                 motorSlide.setPower(.5);
+                 slidePosition = SlidePosition.RIGHT;
+             }
 
-        } else {
-            if (touchNeutralPos.isPressed()) {
-                motorSlide.setPower(.5);
-                slidePosition = SlidePosition.NEUTRAL;
-            }
-        }
-    }
+         } else {
+             if (touchNeutralPos.isPressed()) {
+                 motorSlide.setPower(.5);
+                 slidePosition = SlidePosition.NEUTRAL;
+             }
+         }
+     }
+     */
 }
