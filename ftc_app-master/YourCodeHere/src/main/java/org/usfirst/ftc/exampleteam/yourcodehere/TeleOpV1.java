@@ -8,17 +8,16 @@ import org.swerverobotics.library.interfaces.*;
 /**
  * Version 1.0 of Team Avalanche 6253's TeleOp program for Robot version 2.0.
  * Currently most distance and position values are arbitrary due to not having a complete robot we can test values on.
+ * Nearly finished, all methods save loadDispenser are written, needs some fixing, values, and a lot of testing.
+ * After testing of this code, the next step is to add PID Controls
  */
 @TeleOp(name = "TeleOpV1")
 public class TeleOpV1 extends SynchronousOpMode {
+
     // Variables
 
     //Declare ModifiedBoolean methods. These methods decide whether an action is running or not. (auto sets to false when not specified)
     private ModifiedBoolean testRunning = new ModifiedBoolean();
-    private ModifiedBoolean runningExtendTapeAuto = new ModifiedBoolean();
-    private ModifiedBoolean runningCancelAllArm = new ModifiedBoolean();
-    private ModifiedBoolean runningCancelAllTape = new ModifiedBoolean();
-    private ModifiedBoolean runningCancelAllSlide = new ModifiedBoolean();
     private ModifiedBoolean runningExtendSlide = new ModifiedBoolean();
     private ModifiedBoolean runningRetractSlide = new ModifiedBoolean();
 
@@ -33,39 +32,39 @@ public class TeleOpV1 extends SynchronousOpMode {
     //How long it has been since the Tape has been called
     private long tapeStartTime = 0;
 
-
     // defaults to blue alliance
     private boolean isBlue = true;
 
     //tells whether triggers are in resting position or are down/active, starts at rest
     private boolean atRestTriggers = true;
 
+    //tells whether conveyor is running automatically in score method
+    private boolean autoConveyorRunning = false;
+
     // methods with these variables need values
     private final double ARBITRARYDOUBLE = 0;
     private final int ARBITRARYINT = 0;
-    private final boolean NEEDS_BUTTON_MAPPED = false;
 
     //Declare starting positions for tape, arm, and slide motors
     private int startPosTape;
     private int startPosArm;
     private int startPosSlide;
+    private int maxTapeLength;
+    private double botPosition;
+    private double midPosition;
+    private double topPosition;
+    //farthest slide can extend without damage
+    private int maxSlideLength;
 
-    private final int DISTANCE_TO_HANG = ARBITRARYINT;
-    private final double NEEDS_THRESH = ARBITRARYDOUBLE;
     private final double RIGHT_ZIP_UP = ARBITRARYDOUBLE;
     private final double RIGHT_ZIP_DOWN = ARBITRARYDOUBLE;
     private final double LEFT_ZIP_UP = ARBITRARYDOUBLE;
     private final double LEFT_ZIP_DOWN = ARBITRARYDOUBLE;
-    private final int TICKS_IN_INCH_AFT = ARBITRARYINT;
-    private final int TICKS_IN_INCH_FORE = ARBITRARYINT;
-    private final int TICKS_IN_INCH_TAPE = ARBITRARYINT;
     private final int TICKS_IN_DEGREE_ARM = ARBITRARYINT;
     private final int TICKS_IN_INCH_SLIDE = ARBITRARYINT;
-    private final double DISTANCE_TO_TOP = ARBITRARYDOUBLE;
-    private final double DISTANCE_TO_MID = ARBITRARYDOUBLE;
-    private final double DISTANCE_TO_BOT = ARBITRARYDOUBLE;
     private final double LOCK_ENGAGED = ARBITRARYDOUBLE;
     private final double LOCK_DISENGAGED = ARBITRARYDOUBLE;
+    private final double CONSTANT_DRIVE_SPEED = ARBITRARYDOUBLE;
 
 
     // Declare drive motors
@@ -134,9 +133,10 @@ public class TeleOpV1 extends SynchronousOpMode {
 
                 //MANUAL CONTROLS
                 manualMethods();
-
             }
 
+            //Runs autonomous methods- takes the set values and moves motors to them
+            //based off power curve
             runAllAutoMethods();
 
             //read sensors and adjust accordingly
@@ -157,15 +157,9 @@ public class TeleOpV1 extends SynchronousOpMode {
 
     private void sensorChanges() {
 
+        //stops the slide and updates position when reaches desired position
         slideAutoStop();
 
-        //Changes the position of the slidePosition enum depending on what's pressed
-        if (touchLeftPos.isPressed())
-            slidePosition = SlidePosition.LEFT;
-        if (touchRightPos.isPressed())
-            slidePosition = SlidePosition.RIGHT;
-        if (touchNeutralPos.isPressed())
-            slidePosition = SlidePosition.NEUTRAL;
     }
 
     private void manualMethods() {
@@ -190,7 +184,7 @@ public class TeleOpV1 extends SynchronousOpMode {
 
 
         //toggles zip line position
-        if (gamepad2.x)
+        if (gamepad2.x && !gamepad2.back)
             triggerZipline();
 
 
@@ -201,7 +195,14 @@ public class TeleOpV1 extends SynchronousOpMode {
 
         //Stops any auto methods using slides and manually controls power with joysticks
         if (gamepad2.left_stick_y < -.2 || gamepad2.left_stick_y > .2) { //Threshold so you don't accidentally start running the slides manually
-            motorSlide.setPower(scaleInput(gamepad2.left_stick_y));
+            if (motorSlide.getCurrentPosition() > startPosSlide && motorSlide.getCurrentPosition() < maxSlideLength)
+                motorSlide.setPower(scaleInput(gamepad2.left_stick_y));
+            else {
+                if (motorSlide.getCurrentPosition() > startPosSlide)
+                    motorSlide.setPower(1); //ARBITRARY NEEDS TESTING
+                else
+                    motorSlide.setPower(-1); //ARBITRARY NEEDS TESTING
+            }
             runningExtendSlide.setFalse();
             runningRetractSlide.setFalse();
         }
@@ -209,18 +210,24 @@ public class TeleOpV1 extends SynchronousOpMode {
 
         //adjust the slide servos manually
         if (gamepad2.left_bumper) {
-            servoSlide.setPosition(ARBITRARYDOUBLE);
+            servoSlide.setPosition(0); //COULD BE 1 ARBITRARY
         }
         if (gamepad2.right_bumper) {
-            servoSlide.setPosition(-ARBITRARYDOUBLE);
+            servoSlide.setPosition(1); //COULD BE 0 ARBITRARY
         }
 
 
         //manually adjust the conveyors
-        if (gamepad2.right_trigger > .2)
-            servoConveyor.setPosition(gamepad2.right_trigger / 2 + .5);
-        if (gamepad2.left_trigger > .2)
-            servoConveyor.setPosition(gamepad2.left_trigger / 2 + .5);
+        if (gamepad2.right_trigger > .2 || gamepad2.left_trigger > .2) {
+            if (gamepad2.right_trigger > .2) //.2 is a threshold so you don't accidentally press it
+                servoConveyor.setPosition(gamepad2.right_trigger / 2 + .5);
+            else if (gamepad2.left_trigger > .2)
+                servoConveyor.setPosition(-gamepad2.left_trigger / 2 + .5);
+            autoConveyorRunning = false;
+        } else {
+            if (!autoConveyorRunning)
+                servoConveyor.setPosition(.5);
+        }
 
 
         //Controls for motorTape - Also automatically sets the tapeLock after a specified amount of time
@@ -231,9 +238,11 @@ public class TeleOpV1 extends SynchronousOpMode {
             }
             if (System.currentTimeMillis() - tapeStartTime > ARBITRARYINT) {    /*Test for THRESH, the time which it takes for the lock to unlock */
                 if (gamepad2.dpad_up) {
-                    extendTapeManual(true);
+                    if (motorTape.getCurrentPosition() < maxTapeLength)
+                        motorTape.setPower(1); //MAY BE 1 OR 0 NEEDS TESTING
                 } else {
-                    retractTapeManual(true);
+                    if (motorTape.getCurrentPosition() > startPosTape) //COULD BE GREATER OR LESS DEPENDING ON TESTING THIS IS SO YOU DON'T RETRACT TOO FAR
+                        motorTape.setPower(-1); //MAY BE 1 OR -1 NEEDS TESTING
                 }
             } else {
                 servoLock.setPosition(LOCK_DISENGAGED);
@@ -256,12 +265,6 @@ public class TeleOpV1 extends SynchronousOpMode {
             telemetry.update();
         }
 
-        //Auto shuttles slide to the correct position
-        if (gamepad2.left_bumper)
-            shuttle(true); //shuttles left
-        if (gamepad2.right_bumper)
-            shuttle(false); //shuttles right
-
         /**
          * Scoring methods
          * First button press extends slides and shuttle
@@ -281,8 +284,7 @@ public class TeleOpV1 extends SynchronousOpMode {
      * methods that we call in the gamepad section
      */
     private void runAllAutoMethods() {
-        //Run tape motor till it reaches hang distance
-        runToPos(motorTape, ARBITRARYDOUBLE, runningExtendTapeAuto, null);
+        scoreRun();
     }
 
     //Initialize and Map All Hardware
@@ -353,6 +355,15 @@ public class TeleOpV1 extends SynchronousOpMode {
         startPosSlide = motorSlide.getCurrentPosition();
         startPosTape = motorSlide.getCurrentPosition();
 
+        //Score heights for slides
+        botPosition = startPosTape + ARBITRARYINT;
+        midPosition = startPosTape + ARBITRARYINT;
+        topPosition = startPosTape + ARBITRARYINT;
+        maxSlideLength = startPosTape + ARBITRARYINT;
+
+        //keep track of max length tape should extend
+        maxTapeLength = motorTape.getCurrentPosition() + ARBITRARYINT;
+
         //initializes to neutral because that's where the starting position is
         slidePosition = SlidePosition.NEUTRAL;
     }
@@ -372,38 +383,11 @@ public class TeleOpV1 extends SynchronousOpMode {
                 servoRightZip.setPosition(RIGHT_ZIP_DOWN);
         } else {
             if (atRestTriggers)
-                servoLeftZip.setPosition(RIGHT_ZIP_UP);
+                servoLeftZip.setPosition(LEFT_ZIP_UP);
             else
-                servoLeftZip.setPosition(RIGHT_ZIP_DOWN);
+                servoLeftZip.setPosition(LEFT_ZIP_DOWN);
         }
         atRestTriggers = !atRestTriggers;
-    }
-
-    private void extendTapeManual(boolean b) {
-        if (b) {
-            if (servoLock.getPosition() != LOCK_DISENGAGED) {
-                servoLock.setPosition(LOCK_DISENGAGED);
-            } else
-                motorTape.setPower(1);
-        } else {
-            if (servoTape.getPosition() != LOCK_ENGAGED)
-                servoLock.setPosition(LOCK_ENGAGED);
-            motorTape.setPower(0.0);
-        }
-    }
-
-    private void retractTapeManual(boolean b) {
-        if (b) {
-            if (servoLock.getPosition() != LOCK_DISENGAGED) {
-                servoLock.setPosition(LOCK_DISENGAGED);
-            } else {
-                motorTape.setPower(-1);
-            }
-        } else {
-            if (servoTape.getPosition() != LOCK_ENGAGED)
-                servoLock.setPosition(LOCK_ENGAGED);
-            motorTape.setPower(0.0);
-        }
     }
 
     private void toggleHarvester(double power) {
@@ -417,29 +401,33 @@ public class TeleOpV1 extends SynchronousOpMode {
         motorHarvest.setDirection(DcMotor.Direction.REVERSE);
     }
 
-    //return robot to initialization position
-    private void initPositionSet() {
-        //sets harvester and drive power to 0
-        motorHarvest.setPower(0);
-        setLeftDrivePower(0);
-        setRightDrivePower(0);
+    /**
+     * UNUSED FOR NOW
+     * //return robot to initialization position
+     * private void initPositionSet () {
+     * //sets harvester and drive power to 0
+     * motorHarvest.setPower(0);
+     * setLeftDrivePower(0);
+     * setRightDrivePower(0);
+     * <p/>
+     * //sets the target position for arm, slide, and tape to the init positions
+     * setPosMotor(motorArm, runningCancelAllArm, 1, startPosArm);
+     * setPosMotor(motorTape, runningCancelAllTape, 1, startPosTape);
+     * setPosMotor(motorSlide, runningCancelAllSlide, 1, startPosSlide);
+     * }
+     * <p/>
+     * //runs until the motors hit the initialization position
+     * <p/>
+     * private void initPositionRun() {
+     * if (runningCancelAllArm.getValue() || runningCancelAllSlide.getValue() || runningCancelAllTape.getValue()) {
+     * runToPos(motorArm, 50, runningCancelAllArm, null);
+     * runToPos(motorArm, 50, runningCancelAllTape, null);
+     * runToPos(motorSlide, 50, runningCancelAllTape, null);
+     * }
+     * }
+     */
 
-        //sets the target position for arm, slide, and tape to the init positions
-        setPosMotor(motorArm, runningCancelAllArm, 1, startPosArm);
-        setPosMotor(motorTape, runningCancelAllTape, 1, startPosTape);
-        setPosMotor(motorSlide, runningCancelAllSlide, 1, startPosSlide);
-    }
-
-    //runs until the motors hit the initialization position
-    private void initPositionRun() {
-        if (runningCancelAllArm.getValue() || runningCancelAllSlide.getValue() || runningCancelAllTape.getValue()) {
-            runToPos(motorArm, 50, runningCancelAllArm, null);
-            runToPos(motorArm, 50, runningCancelAllTape, null);
-            runToPos(motorSlide, 50, runningCancelAllTape, null);
-        }
-    }
-
-    //stop all motors
+    //stop all motors and ends all processes
     private void cancelAll() {
         motorArm.setPower(0);
         motorHarvest.setPower(0);
@@ -447,9 +435,12 @@ public class TeleOpV1 extends SynchronousOpMode {
         motorSlide.setPower(0);
         setLeftDrivePower(0);
         setRightDrivePower(0);
-        /**
-         * ADD CODE HERE THAT SETS ALL MODIFIEDBOOLEANS EQUAL TO FALSE WHEN EVERYTHING ELSE IS DONE
-         */
+        servoSlide.setPosition(.5);
+        servoConveyor.setPosition(.5);
+
+        testRunning.setFalse();
+        runningExtendSlide.setFalse();
+        runningRetractSlide.setFalse();
     }
 
 
@@ -459,15 +450,16 @@ public class TeleOpV1 extends SynchronousOpMode {
     //                                                                                            //
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    private void setPosMotor(DcMotor motor, ModifiedBoolean isRunning, int ticksInInch, double distance) {
+    private void setPosMotor(DcMotor motor, ModifiedBoolean isRunning, int ticksInInch, double targetLocation) {
         isRunning.toggle();
         if (!isRunning.getValue()) {
             motor.setPower(0);
         } else
-            motor.setTargetPosition((int) (motor.getCurrentPosition() + (ticksInInch * distance)));
+            motor.setTargetPosition((int) (ticksInInch * targetLocation));
     }
 
 
+    //HOPEFULLY WILL REPLACE THIS METHOD WITH SOMETHING THAT IS MORE BETTER (PID?)
     private void runToPos(DcMotor motor, double minPower, ModifiedBoolean isRunning, ModifiedBoolean runNext) {
         if (isRunning.getValue()) {
             if (motor.getCurrentPosition() - 10 < motor.getTargetPosition() && motor.getCurrentPosition() < motor.getTargetPosition() + 10) {
@@ -490,7 +482,11 @@ public class TeleOpV1 extends SynchronousOpMode {
         motorRightAft.setPower(power);
     }
 
-    private void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) {
+    //Currently sets power based on a logarithmic scale- stays at full power till thresh
+    //thresh is how many ticks away before it starts to slow down
+    //inputPower is the max running speed
+    //NEEDS TO BE CONFIGURED TO WORK BOTH DIRECTIONS (FORWARDS AND REVERSE)
+    private void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) { //NEED TO DO TESTING TO SEE BEST THRESH
         int target = motor.getTargetPosition();
         if (target - motor.getCurrentPosition() > thresh)
             motor.setPower(inputPower);
@@ -524,6 +520,7 @@ public class TeleOpV1 extends SynchronousOpMode {
         return dScale;
     }
 
+    //Test method to see if writing code without whiles works. (It does)
     private void testContMotor() {
         if (motorSlide.getCurrentPosition() < motorSlide.getTargetPosition()) {
             setCurvedPower(motorSlide, 1000, 1, 0.3);
@@ -537,61 +534,51 @@ public class TeleOpV1 extends SynchronousOpMode {
     //Certain actions such as the conveyor run on button prompts while
     //Other automated actions such as shuttling run on their own
     private void scoreSet(Height height, boolean button) {  // can be either top mid or bot
-        if (scoreToggle == 0) {
-            //extend slides to specified height
-            extendSlideSet(height);
-            shuttle(isBlue);
-            scoreToggle++;
-            return;
-        }
+        if (button) {
+            if (scoreToggle == 0) {
+                //extend slides to specified height
+                extendSlideSet(height);
+                shuttle(isBlue);
+                scoreToggle++;
+                return;
+            }
 
-        if (scoreToggle == 1) {
-            //start the conveyor
-            servoConveyor.setPosition(ARBITRARYDOUBLE);
-            scoreToggle++;
-            return;
+            if (scoreToggle == 1) {
+                //start the conveyor
+                if (isBlue)
+                    servoConveyor.setPosition(1); //MAY BE 0
+                else
+                    servoConveyor.setPosition(0);
+                autoConveyorRunning = true;
+                scoreToggle++;
+                return;
+            }
+            if (scoreToggle == 2) {
+                runningExtendSlide.setFalse(); //Just in case extendSlide is still running set it to false
+                //stop conveyor and return to retracted position
+                servoConveyor.setPosition(.5);
+                autoConveyorRunning = false;
+                shuttle(isBlue); //Runs using touch sensor
+                setPosMotor(motorSlide, runningRetractSlide, 1, startPosSlide);
+                scoreToggle = 0;
+                shuttle(isBlue);
+            }
+            /**
+             * NEED TO WRITE METHOD THAT CAN SHUTTLE THE DISPENSER TO A SPECIFIC DISTANCE - most likely
+             * will be time based and refined through testing since continuous servos don't have
+             * encoders or positions
+             */
         }
-        if (scoreToggle == 2) {
-            //stop conveyor and return to retracted position
-            servoConveyor.setPosition(ARBITRARYDOUBLE);
-            shuttleDispenserSet(false); //NEED TO WRITE METHOD AFTER FIGURING OUT WHAT WE'RE DOING TOUCH SENSOR? TIME?
-            setPosMotor(motorSlide, runningRetractSlide, 1, startPosSlide);
-            scoreToggle = 0;
-            shuttle(isBlue);
-        }
-        /**
-         * NEED TO WRITE METHOD THAT CAN SHUTTLE THE DISPENSER TO A SPECIFIC DISTANCE - most likely
-         * will be time based and refined through testing since continuous servos don't have
-         * encoders or positions
-         */
     }
 
     private void scoreRun() {
-        //Extends Tape Measure
         runToPos(motorSlide, ARBITRARYDOUBLE, runningExtendSlide, null);
-        shuttleDispenserRun();
-        //NEED TO WRITE METHOD THAT CAN SHUTTLE THE DISPENSER TO SPECIFIC DISTANCE
         runToPos(motorSlide, ARBITRARYDOUBLE, runningRetractSlide, null);
-    }
-
-    /**
-     * WRITE METHOD
-     */
-    private void shuttleDispenserRun() {
-
-    }
-
-    /**
-     * WRITE METHOD
-     */
-    private void shuttleDispenserSet(boolean toGoal) {
-
     }
 
     private void loadDispenserSet() {
 
     }
-
 
     private void dumpDispenser() {
 
@@ -600,17 +587,17 @@ public class TeleOpV1 extends SynchronousOpMode {
     //returns and telemetry updates are for testing purposes
     private void extendSlideSet(Height height) { //Can be either top mid or bot
         if (height == Height.TOP) {
-            setPosMotor(motorSlide, runningExtendSlide, TICKS_IN_INCH_SLIDE, DISTANCE_TO_TOP);
+            setPosMotor(motorSlide, runningExtendSlide, TICKS_IN_INCH_SLIDE, topPosition);
             return;
         }
 
         if (height == Height.MID) {
-            setPosMotor(motorSlide, runningExtendSlide, TICKS_IN_INCH_SLIDE, DISTANCE_TO_MID);
+            setPosMotor(motorSlide, runningExtendSlide, TICKS_IN_INCH_SLIDE, midPosition);
             return;
         }
 
         if (height == Height.BOT) {
-            setPosMotor(motorSlide, runningExtendSlide, TICKS_IN_INCH_SLIDE, DISTANCE_TO_BOT);
+            setPosMotor(motorSlide, runningExtendSlide, TICKS_IN_INCH_SLIDE, botPosition);
             return;
         }
 
@@ -622,30 +609,35 @@ public class TeleOpV1 extends SynchronousOpMode {
 
         if (gamepad1.left_stick_button) {
             if (gamepad1.left_stick_y > 0)
-                setLeftDrivePower(ARBITRARYDOUBLE);
+                setLeftDrivePower(CONSTANT_DRIVE_SPEED);
             else
-                setLeftDrivePower(-ARBITRARYDOUBLE);
+                setLeftDrivePower(-CONSTANT_DRIVE_SPEED);
         } else
             setLeftDrivePower(scaleInput(gamepad1.left_stick_y));
 
         if (gamepad1.right_stick_button) {
             if (gamepad1.right_stick_y > 0)
-                setRightDrivePower(ARBITRARYDOUBLE);
+                setRightDrivePower(CONSTANT_DRIVE_SPEED);
             else
-                setRightDrivePower(-ARBITRARYDOUBLE);
+                setRightDrivePower(-CONSTANT_DRIVE_SPEED);
         } else
             setRightDrivePower(scaleInput(gamepad1.right_stick_y));
 
     }
 
+
+    //Method for controlling dispenser movement to and from scoring buckets
     private void shuttle(boolean directionLeft) {
         if (!(slidePosition == SlidePosition.NEUTRAL)) { //if shuttle is currently in an out position it returns to mid
-           if (touchLeftPos.isPressed())
-               servoSlide.setPosition(1);
-            else
-               servoSlide.setPosition(0);
-        }
-        else {
+            if (Math.abs(servoSlide.getPosition() - .5) == .5) {
+                servoSlide.setPosition(.5);
+            } else {
+                if (directionLeft) //not yet sure if this value is 0 or 1 need to test
+                    servoSlide.setPosition(1);
+                else
+                    servoSlide.setPosition(0);
+            }
+        } else {
             if (Math.abs(servoSlide.getPosition() - .5) == .5) { //if it's running to the left or right, (the power is 1 or 0) stops the servo
                 servoSlide.setPosition(.5); //shuts off power
             } else {
@@ -662,9 +654,9 @@ public class TeleOpV1 extends SynchronousOpMode {
      * and also stops the motor once it reaches the desired position by turning
      * off the power. This code runs every main loop in the sensorUpdates method
      */
+
     private void slideAutoStop() {
-        if (slidePosition == SlidePosition.NEUTRAL)
-        {
+        if (slidePosition == SlidePosition.NEUTRAL) {
             if (touchLeftPos.isPressed()) {
                 motorSlide.setPower(.5);
                 slidePosition = SlidePosition.LEFT;
@@ -675,8 +667,7 @@ public class TeleOpV1 extends SynchronousOpMode {
                 slidePosition = SlidePosition.RIGHT;
             }
 
-        }
-        else {
+        } else {
             if (touchNeutralPos.isPressed()) {
                 motorSlide.setPower(.5);
                 slidePosition = SlidePosition.NEUTRAL;
