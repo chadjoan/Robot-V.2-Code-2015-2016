@@ -13,14 +13,19 @@ import org.swerverobotics.library.interfaces.*;
 public class TeleOpV1 extends SynchronousOpMode {
     // Variables
 
-    //Declare ModifiedBoolean methods. These methods decide whether an action is running or not.
-    private ModifiedBoolean testRunning = new ModifiedBoolean(false);
-    private ModifiedBoolean runningExtendTapeAuto = new ModifiedBoolean(false);
-    private ModifiedBoolean runningCancelAllArm = new ModifiedBoolean(false);
-    private ModifiedBoolean runningCancelAllTape = new ModifiedBoolean(false);
-    private ModifiedBoolean runningCancelAllSlide = new ModifiedBoolean(false);
-    private ModifiedBoolean runningExtendSlide = new ModifiedBoolean(false);
-    private ModifiedBoolean runningRetractSlide = new ModifiedBoolean(false);
+    //Declare ModifiedBoolean methods. These methods decide whether an action is running or not. (auto sets to false when not specified)
+    private ModifiedBoolean testRunning = new ModifiedBoolean();
+    private ModifiedBoolean runningExtendTapeAuto = new ModifiedBoolean();
+    private ModifiedBoolean runningCancelAllArm = new ModifiedBoolean();
+    private ModifiedBoolean runningCancelAllTape = new ModifiedBoolean();
+    private ModifiedBoolean runningCancelAllSlide = new ModifiedBoolean();
+    private ModifiedBoolean runningExtendSlide = new ModifiedBoolean();
+    private ModifiedBoolean runningRetractSlide = new ModifiedBoolean();
+
+    //Enums
+
+    //Used to tell where the servoSlide is (whether it's in a scoring position or neutral position
+    SlidePosition slidePosition;
 
     //shows what step score method is on
     private int scoreToggle = 0;
@@ -98,6 +103,11 @@ public class TeleOpV1 extends SynchronousOpMode {
     // Declare sensors
     GyroSensor gyro;
 
+    // Touch Sensors (Not sure if we're using these yet)
+    TouchSensor touchLeftPos;
+    TouchSensor touchRightPos;
+    TouchSensor touchNeutralPos;
+
     @Override
     public void main() throws InterruptedException {
         hardwareMapping();
@@ -105,6 +115,8 @@ public class TeleOpV1 extends SynchronousOpMode {
         waitForStart();
         // Go go gadget robot!
         while (opModeIsActive()) {
+
+            //Checks to see if something changed on the controller ie. a button is pressed or a trigger is bumped
             if (updateGamepads()) {
 
                 //AUTOMATIC CONTROLS//
@@ -127,6 +139,9 @@ public class TeleOpV1 extends SynchronousOpMode {
 
             runAllAutoMethods();
 
+            //read sensors and adjust accordingly
+            sensorChanges();
+
             if (testRunning.getValue()) {
                 testContMotor();
             }
@@ -134,6 +149,24 @@ public class TeleOpV1 extends SynchronousOpMode {
         }
     }
 
+    /**
+     * in the sensorChanges method we put the methods that depend on
+     * sensor input do decide when to start, stop, etc.
+     * It is the last mehtod to run in the main loop
+     */
+
+    private void sensorChanges() {
+
+        slideAutoStop();
+
+        //Changes the position of the slidePosition enum depending on what's pressed
+        if (touchLeftPos.isPressed())
+            slidePosition = SlidePosition.LEFT;
+        if (touchRightPos.isPressed())
+            slidePosition = SlidePosition.RIGHT;
+        if (touchNeutralPos.isPressed())
+            slidePosition = SlidePosition.NEUTRAL;
+    }
 
     private void manualMethods() {
         //Toggle Team (if we need to score on an opponent's ramp)
@@ -142,8 +175,6 @@ public class TeleOpV1 extends SynchronousOpMode {
         if ((gamepad1.back && gamepad1.x) || (gamepad2.back && gamepad2.x))
             isBlue = true;
 
-        extendTapeManual(gamepad2.dpad_up);
-        retractTapeManual(gamepad2.dpad_down);
 
         //starts and stops harvester
         if (gamepad1.left_trigger > .8)
@@ -157,19 +188,26 @@ public class TeleOpV1 extends SynchronousOpMode {
         //If joystick buttons are pressed, sets drive power to preset value
         manualDriveControls();
 
+
+        //toggles zip line position
         if (gamepad2.x)
             triggerZipline();
 
+
+        //stops all motors and cancels all motor operations, basically a panic button that stops all functions
         if ((gamepad1.back && gamepad1.start) || (gamepad2.back && gamepad2.start))
             cancelAll();
 
+
         //Stops any auto methods using slides and manually controls power with joysticks
-        if (gamepad2.left_stick_y < -.2 || gamepad2.left_stick_y > .2) {
+        if (gamepad2.left_stick_y < -.2 || gamepad2.left_stick_y > .2) { //Threshold so you don't accidentally start running the slides manually
             motorSlide.setPower(scaleInput(gamepad2.left_stick_y));
             runningExtendSlide.setFalse();
             runningRetractSlide.setFalse();
         }
 
+
+        //adjust the slide servos manually
         if (gamepad2.left_bumper) {
             servoSlide.setPosition(ARBITRARYDOUBLE);
         }
@@ -177,12 +215,15 @@ public class TeleOpV1 extends SynchronousOpMode {
             servoSlide.setPosition(-ARBITRARYDOUBLE);
         }
 
+
         //manually adjust the conveyors
         if (gamepad2.right_trigger > .2)
-            servoConveyor.setPosition(gamepad2.right_trigger/2 + .5);
+            servoConveyor.setPosition(gamepad2.right_trigger / 2 + .5);
         if (gamepad2.left_trigger > .2)
-            servoConveyor.setPosition(gamepad2.left_trigger /2 + .5);
+            servoConveyor.setPosition(gamepad2.left_trigger / 2 + .5);
 
+
+        //Controls for motorTape - Also automatically sets the tapeLock after a specified amount of time
         if (gamepad2.dpad_up || gamepad2.dpad_down) {
             // if it's the first time you loop after holding down the button.
             if (!motorTape.isBusy()) {
@@ -214,6 +255,12 @@ public class TeleOpV1 extends SynchronousOpMode {
             telemetry.addData("Button Works!", "Test");
             telemetry.update();
         }
+
+        //Auto shuttles slide to the correct position
+        if (gamepad2.left_bumper)
+            shuttle(true); //shuttles left
+        if (gamepad2.right_bumper)
+            shuttle(false); //shuttles right
 
         /**
          * Scoring methods
@@ -271,7 +318,13 @@ public class TeleOpV1 extends SynchronousOpMode {
         servoRightZip = hardwareMap.servo.get("servoRightZip");
 
         // Initialize sensors
+
+        //Initialize gyro
         gyro = hardwareMap.gyroSensor.get("gyro");
+        //Initialize touch sensors
+        touchLeftPos = hardwareMap.touchSensor.get("touchLeftPos");
+        touchRightPos = hardwareMap.touchSensor.get("touchRightPos");
+        touchNeutralPos = hardwareMap.touchSensor.get("touchNeutralPos");
 
         gyro.calibrate();
 
@@ -299,6 +352,9 @@ public class TeleOpV1 extends SynchronousOpMode {
         startPosArm = motorArm.getCurrentPosition();
         startPosSlide = motorSlide.getCurrentPosition();
         startPosTape = motorSlide.getCurrentPosition();
+
+        //initializes to neutral because that's where the starting position is
+        slidePosition = SlidePosition.NEUTRAL;
     }
 
 
@@ -484,7 +540,7 @@ public class TeleOpV1 extends SynchronousOpMode {
         if (scoreToggle == 0) {
             //extend slides to specified height
             extendSlideSet(height);
-            shuttleDispenserSet(true); //NEED TO WRITE METHOD AFTER FIGURING OUT WHAT WE'RE DOING TOUCH SENSOR? TIME?
+            shuttle(isBlue);
             scoreToggle++;
             return;
         }
@@ -501,6 +557,7 @@ public class TeleOpV1 extends SynchronousOpMode {
             shuttleDispenserSet(false); //NEED TO WRITE METHOD AFTER FIGURING OUT WHAT WE'RE DOING TOUCH SENSOR? TIME?
             setPosMotor(motorSlide, runningRetractSlide, 1, startPosSlide);
             scoreToggle = 0;
+            shuttle(isBlue);
         }
         /**
          * NEED TO WRITE METHOD THAT CAN SHUTTLE THE DISPENSER TO A SPECIFIC DISTANCE - most likely
@@ -581,4 +638,49 @@ public class TeleOpV1 extends SynchronousOpMode {
 
     }
 
+    private void shuttle(boolean directionLeft) {
+        if (!(slidePosition == SlidePosition.NEUTRAL)) { //if shuttle is currently in an out position it returns to mid
+           if (touchLeftPos.isPressed())
+               servoSlide.setPosition(1);
+            else
+               servoSlide.setPosition(0);
+        }
+        else {
+            if (Math.abs(servoSlide.getPosition() - .5) == .5) { //if it's running to the left or right, (the power is 1 or 0) stops the servo
+                servoSlide.setPosition(.5); //shuts off power
+            } else {
+                if (directionLeft)
+                    servoSlide.setPosition(0); //not yet sure if this value is 0 or 1 need to test
+                else
+                    servoSlide.setPosition(1);
+            }
+        }
+    }
+
+    /**
+     * updates slidePosition (the enum for keeping track of where the slide is)
+     * and also stops the motor once it reaches the desired position by turning
+     * off the power. This code runs every main loop in the sensorUpdates method
+     */
+    private void slideAutoStop() {
+        if (slidePosition == SlidePosition.NEUTRAL)
+        {
+            if (touchLeftPos.isPressed()) {
+                motorSlide.setPower(.5);
+                slidePosition = SlidePosition.LEFT;
+            }
+
+            if (touchRightPos.isPressed()) {
+                motorSlide.setPower(.5);
+                slidePosition = SlidePosition.RIGHT;
+            }
+
+        }
+        else {
+            if (touchNeutralPos.isPressed()) {
+                motorSlide.setPower(.5);
+                slidePosition = SlidePosition.NEUTRAL;
+            }
+        }
+    }
 }

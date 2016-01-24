@@ -9,6 +9,8 @@ public class ModifiedBoolean {
 
     public ModifiedBoolean(boolean b) {bool = b;}
 
+    public ModifiedBoolean() {bool = false;}
+
     public void toggle() {bool = !bool;}
 
     public void setFalse() {bool = false;}
