@@ -21,6 +21,9 @@ public class TeleOpV1 extends SynchronousOpMode {
     private ModifiedBoolean runningExtendSlide = new ModifiedBoolean();
     private ModifiedBoolean runningRetractSlide = new ModifiedBoolean();
 
+    //Declare global variable PID
+    private PIDControl motorSlidePID;
+
     //Enums
 
     //Used to tell where the servoSlide is (whether it's in a scoring position or neutral position
@@ -391,6 +394,9 @@ public class TeleOpV1 extends SynchronousOpMode {
 
         //initializes to neutral because that's where the starting position is
         slidePosition = SlidePosition.NEUTRAL;
+
+        motorSlidePID = new PIDControl(motorSlide);
+        motorSlidePID.setConstants(.001, .001, .001); //ARBITRARY
     }
 
 
@@ -466,6 +472,7 @@ public class TeleOpV1 extends SynchronousOpMode {
         testRunning.setFalse();
         runningExtendSlide.setFalse();
         runningRetractSlide.setFalse();
+        autoConveyorRunning = false;
     }
 
 
@@ -483,7 +490,7 @@ public class TeleOpV1 extends SynchronousOpMode {
             motor.setTargetPosition((int) (ticksInInch * targetLocation));
     }
 
-
+/*
     //HOPEFULLY WILL REPLACE THIS METHOD WITH SOMETHING THAT IS MORE BETTER (PID?)
     private void runToPos(DcMotor motor, double minPower, ModifiedBoolean isRunning, ModifiedBoolean runNext) {
         if (isRunning.getValue()) {
@@ -496,6 +503,23 @@ public class TeleOpV1 extends SynchronousOpMode {
                 setCurvedPower(motor, 30, 1, minPower); //ARBITRARY (30)
         }
     }
+    */
+
+    //new run to pos method
+    private void runToPos(DcMotor motor, PIDControl c, ModifiedBoolean isRunning, ModifiedBoolean runNext){
+        if(isRunning.getValue()) {
+            if (motor.getCurrentPosition() < motor.getTargetPosition()) {
+                c.updatePower(System.currentTimeMillis(), motor.getTargetPosition(), motor.getCurrentPosition());
+            } else {
+                motor.setPower(0);
+                isRunning.setFalse();
+                if (runNext != null)
+                    runNext.setTrue();
+                c.reset();
+            }
+        }
+    }
+
 
     private void setLeftDrivePower(double power) {
         motorLeftFore.setPower(power);
@@ -507,10 +531,11 @@ public class TeleOpV1 extends SynchronousOpMode {
         motorRightAft.setPower(power);
     }
 
-    //Currently sets power based on a logarithmic scale- stays at full power till thresh
-    //thresh is how many ticks away before it starts to slow down
-    //inputPower is the max running speed
-    //NEEDS TO BE CONFIGURED TO WORK BOTH DIRECTIONS (FORWARDS AND REVERSE)
+    /*Currently sets power based on a logarithmic scale- stays at full power till thresh
+    thresh is how many ticks away before it starts to slow down
+    inputPower is the max running speed
+    NEEDS TO BE CONFIGURED TO WORK BOTH DIRECTIONS (FORWARDS AND REVERSE)
+    NOT USED DUE TO PID */
     private void setCurvedPower(DcMotor motor, double thresh, double inputPower, double minPower) { //NEED TO DO TESTING TO SEE BEST THRESH
         int target = motor.getTargetPosition();
         if (target - motor.getCurrentPosition() > thresh)
@@ -562,6 +587,7 @@ public class TeleOpV1 extends SynchronousOpMode {
         if (button) {
             if (scoreToggle == 0) {
                 //extend slides to specified height
+                motorSlidePID.reset();
                 extendSlideSet(height);
                 shuttle(isBlue);
                 scoreToggle++;
@@ -584,6 +610,7 @@ public class TeleOpV1 extends SynchronousOpMode {
                 servoConveyor.setPosition(.5);
                 autoConveyorRunning = false;
                 shuttle(isBlue); //Runs using touch sensor
+                motorSlidePID.reset();
                 setPosMotor(motorSlide, runningRetractSlide, 1, startPosSlide);
                 scoreToggle = 0;
                 shuttle(isBlue);
@@ -596,9 +623,17 @@ public class TeleOpV1 extends SynchronousOpMode {
         }
     }
 
+    /* Old non-PID
     private void scoreRun() {
         runToPos(motorSlide, 30, runningExtendSlide, null); //ARBITRARY
         runToPos(motorSlide, 30, runningRetractSlide, null); //ARBITRARY
+    }
+    */
+
+    //new score run
+    private void scoreRun() { //you must loop this method!
+        runToPos(motorSlide, motorSlidePID, runningExtendSlide, null);
+        runToPos(motorSlide, motorSlidePID, runningRetractSlide, null);
     }
 
     private void loadDispenserSet() {
