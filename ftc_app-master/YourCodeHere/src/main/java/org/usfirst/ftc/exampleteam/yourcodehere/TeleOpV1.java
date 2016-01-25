@@ -200,7 +200,7 @@ public class TeleOpV1 extends SynchronousOpMode {
 
         //Read Joystick Data and Update Speed of Left and Right Motors
         //If joystick buttons are pressed, sets drive power to preset value
-        manualDriveControls();
+        manualDriveControls(true);
 
 
         //toggles zip line position
@@ -440,15 +440,15 @@ public class TeleOpV1 extends SynchronousOpMode {
      * motorHarvest.setPower(0);
      * setLeftDrivePower(0);
      * setRightDrivePower(0);
-     * <p/>
+     * <p>
      * //sets the target position for arm, slide, and tape to the init positions
      * setPosMotor(motorArm, runningCancelAllArm, 1, startPosArm);
      * setPosMotor(motorTape, runningCancelAllTape, 1, startPosTape);
      * setPosMotor(motorSlide, runningCancelAllSlide, 1, startPosSlide);
      * }
-     * <p/>
+     * <p>
      * //runs until the motors hit the initialization position
-     * <p/>
+     * <p>
      * private void initPositionRun() {
      * if (runningCancelAllArm.getValue() || runningCancelAllSlide.getValue() || runningCancelAllTape.getValue()) {
      * runToPos(motorArm, 50, runningCancelAllArm, null);
@@ -506,8 +506,8 @@ public class TeleOpV1 extends SynchronousOpMode {
     */
 
     //new run to pos method
-    private void runToPos(DcMotor motor, PIDControl c, ModifiedBoolean isRunning, ModifiedBoolean runNext){
-        if(isRunning.getValue()) {
+    private void runToPos(DcMotor motor, PIDControl c, ModifiedBoolean isRunning, ModifiedBoolean runNext) {
+        if (isRunning.getValue()) {
             if (motor.getCurrentPosition() < motor.getTargetPosition()) {
                 c.updatePower(System.currentTimeMillis(), motor.getTargetPosition(), motor.getCurrentPosition());
             } else {
@@ -665,24 +665,45 @@ public class TeleOpV1 extends SynchronousOpMode {
         telemetry.update();
     }
 
-    private void manualDriveControls() {
+    /*
+    Runs tank drive and arcade drive
+    If boolean is true, it runs tank if false, it runs arcade
+    with tank, each joystick's y value controls each side
+     ex. left joystick controls left wheels right joystick controls right wheels
+     With Arcade drive, the left trigger y controls drive and right trigger x controls turning
+     kind of like a video game
+     */
+    private void manualDriveControls(boolean usingTankDrive) {
+        if (usingTankDrive) {
+            if (gamepad1.right_trigger > .7 && (gamepad1.right_stick_y > .2 || gamepad1.right_stick_y < -.2)) {
+                if (gamepad1.left_stick_y > 0)
+                    setLeftDrivePower(CONSTANT_DRIVE_SPEED);
+                else
+                    setLeftDrivePower(-CONSTANT_DRIVE_SPEED);
+            } else
+                setLeftDrivePower(scaleInput(gamepad1.left_stick_y));
 
-        if (gamepad1.right_trigger > .7 && (gamepad1.right_stick_y > .2 || gamepad1.right_stick_y < -.2)) {
-            if (gamepad1.left_stick_y > 0)
-                setLeftDrivePower(CONSTANT_DRIVE_SPEED);
-            else
-                setLeftDrivePower(-CONSTANT_DRIVE_SPEED);
-        } else
-            setLeftDrivePower(scaleInput(gamepad1.left_stick_y));
-
-        if (gamepad1.right_trigger > .7 && (gamepad1.right_stick_y > .2 || gamepad1.right_stick_y < -.2)) {
-            if (gamepad1.right_stick_y > 0)
-                setRightDrivePower(CONSTANT_DRIVE_SPEED);
-            else
-                setRightDrivePower(-CONSTANT_DRIVE_SPEED);
-        } else
-            setRightDrivePower(scaleInput(gamepad1.right_stick_y));
-
+            if (gamepad1.right_trigger > .7 && (gamepad1.right_stick_y > .2 || gamepad1.right_stick_y < -.2)) {
+                if (gamepad1.right_stick_y > 0)
+                    setRightDrivePower(CONSTANT_DRIVE_SPEED);
+                else
+                    setRightDrivePower(-CONSTANT_DRIVE_SPEED);
+            } else
+                setRightDrivePower(scaleInput(gamepad1.right_stick_y));
+        } else {
+            if (gamepad1.right_trigger > .7 && (gamepad1.right_stick_y > .2 || gamepad1.right_stick_y < -.2)) {
+                if (gamepad1.left_stick_y > 0) {
+                    setLeftDrivePower(CONSTANT_DRIVE_SPEED);
+                    setRightDrivePower(CONSTANT_DRIVE_SPEED);
+                } else {
+                    setLeftDrivePower(-CONSTANT_DRIVE_SPEED);
+                    setRightDrivePower(-CONSTANT_DRIVE_SPEED);
+                }
+            } else {
+                setLeftDrivePower(scaleInput(gamepad1.left_stick_y) + scaleInput(gamepad1.right_stick_x));
+                setRightDrivePower(scaleInput(gamepad1.left_stick_y) - scaleInput(gamepad1.right_stick_x));
+            }
+        }
     }
 
 
@@ -717,23 +738,23 @@ public class TeleOpV1 extends SynchronousOpMode {
 
     /**
      private void slideAutoStop() {
-         if (slidePosition == SlidePosition.NEUTRAL) {
-             if ((colorLeft.red() + colorLeft.green()+ colorLeft.blue()) > ARBITRARYDOUBLE) {
-                 motorSlide.setPower(.5);
-                 slidePosition = SlidePosition.LEFT;
-             }
+     if (slidePosition == SlidePosition.NEUTRAL) {
+     if ((colorLeft.red() + colorLeft.green()+ colorLeft.blue()) > ARBITRARYDOUBLE) {
+     motorSlide.setPower(.5);
+     slidePosition = SlidePosition.LEFT;
+     }
 
-             if (touchRightPos.isPressed()) {
-                 motorSlide.setPower(.5);
-                 slidePosition = SlidePosition.RIGHT;
-             }
+     if (touchRightPos.isPressed()) {
+     motorSlide.setPower(.5);
+     slidePosition = SlidePosition.RIGHT;
+     }
 
-         } else {
-             if (touchNeutralPos.isPressed()) {
-                 motorSlide.setPower(.5);
-                 slidePosition = SlidePosition.NEUTRAL;
-             }
-         }
+     } else {
+     if (touchNeutralPos.isPressed()) {
+     motorSlide.setPower(.5);
+     slidePosition = SlidePosition.NEUTRAL;
+     }
+     }
      }
      */
 }
