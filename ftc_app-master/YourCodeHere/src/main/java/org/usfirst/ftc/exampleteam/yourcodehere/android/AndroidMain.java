@@ -1,4 +1,4 @@
-package org.usfirst.ftc.exampleteam.yourcodehere;
+package org.usfirst.ftc.exampleteam.yourcodehere.android;
 
 import com.qualcomm.robotcore.hardware.*;
 
@@ -114,8 +114,9 @@ public class TeleOpV1 extends SynchronousOpMode {
     //ColorSensor colorRight;
 
 
-    @Override
-    public void main() throws InterruptedException {
+    //@Override
+    //public void main() throws InterruptedException {
+    public void foobarbaz() throws InterruptedException {
         hardwareMapping();
 
         waitForStart();
