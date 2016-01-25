@@ -1,5 +1,7 @@
 package org.usfirst.ftc.exampleteam.yourcodehere.desktop;
 
+import org.usfirst.ftc.exampleteam.yourcodehere.*;
+
 public class DesktopMain {
 
     public static void main(String[] args) {

@@ -1,6 +1,6 @@
 if ( rootProject.buildAndroid ) {
 	apply plugin: 'com.android.application'
-	mainClassName = "org.usfirst.ftc.exampleteam.yourcodehere.android.AndroidMain"
+	mainClassName = "org.usfirst.ftc.exampleteam.yourcodehere.android.TeleOpV1"
 
 	android {
 		compileSdkVersion 19

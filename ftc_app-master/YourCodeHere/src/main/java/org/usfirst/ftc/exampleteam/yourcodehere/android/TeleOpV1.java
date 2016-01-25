@@ -5,6 +5,8 @@ import com.qualcomm.robotcore.hardware.*;
 import org.swerverobotics.library.*;
 import org.swerverobotics.library.interfaces.*;
 
+import org.usfirst.ftc.exampleteam.yourcodehere.*;
+
 /**
  * Version 1.0 of Team Avalanche 6253's TeleOp program for Robot version 2.0.
  * Currently most distance and position values are arbitrary due to not having a complete robot we can test values on.
