@@ -43,3 +43,11 @@ if ( rootProject.buildAndroid ) {
 		compile(name: 'Analytics-release', ext: 'aar')
 	}
 }
+else
+{
+	apply plugin: 'java'
+	sourceSets.main.java {
+		srcDir 'src/main/java'
+		exclude 'org/swerverobotics/library/**'
+	}
+}

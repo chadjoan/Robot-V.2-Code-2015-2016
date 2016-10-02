@@ -35,3 +35,12 @@ if ( rootProject.buildAndroid ) {
 		compile project(':SwerveRoboticsLibrary')
 	}
 }
+else
+{
+	apply plugin: 'java'
+	sourceSets.main.java {
+		srcDir 'src/main/java'
+		exclude 'com/qualcomm/ftcrobotcontroller/**'
+		exclude 'com/openftc/android/**'
+	}
+}
